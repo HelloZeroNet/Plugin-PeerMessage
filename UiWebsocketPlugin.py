@@ -3,6 +3,7 @@ from util import SafeRe
 import hashlib
 import random
 import json
+import time
 
 
 
@@ -31,6 +32,12 @@ class UiWebsocketPlugin(object):
         if not SafeRe.match(content_json["p2p_filter"], json.dumps(message)):
             self.response(to, {"error": "Invalid message for site %s: %s" % (self.site.address, message)})
             return
+
+        # Not so fast
+        if "p2p_freq_limit" in content_json and time.time() - self.site.p2p_last_recv.get("self", 0) < content_json["p2p_freq_limit"]:
+            self.response(to, {"error": "Too fast messages"})
+            return
+        self.site.p2p_last_recv["self"] = time.time()
 
 
         nonce = str(random.randint(0, 1000000000))

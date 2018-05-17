@@ -1,6 +1,7 @@
 from Plugin import PluginManager
 from util import SafeRe
 import json
+import time
 
 
 
@@ -8,6 +9,8 @@ import json
 class FileRequestPlugin(object):
     # Re-broadcast to neighbour peers
     def actionPeerBroadcast(self, params):
+        ip = "%s:%s" % (self.connection.ip, self.connection.port)
+
         # Check whether P2P messages are supported
         site = self.sites.get(params["site"])
         content_json = site.storage.loadJson("content.json")
@@ -21,16 +24,25 @@ class FileRequestPlugin(object):
             return
         site.p2p_received.append(params["hash"])
 
+
         # Check whether the message matches passive filter
         if not SafeRe.match(content_json["p2p_filter"], json.dumps(params["message"])):
             self.connection.log("Invalid message for site %s: %s" % (params["site"], params["message"]))
             self.connection.badAction(5)
             return
 
+        # Not so fast
+        if "p2p_freq_limit" in content_json and time.time() - site.p2p_last_recv.get(ip, 0) < content_json["p2p_freq_limit"]:
+            self.connection.log("Too fast messages from %s" % params["site"])
+            self.connection.badAction(2)
+            return
+        site.p2p_last_recv[ip] = time.time()
+
+
         # Send to WebSocket
         for ws in site.websockets:
             ws.cmd("peerReceive", {
-                "ip": "%s:%s" % (self.connection.ip, self.connection.port),
+                "ip": ip,
                 "hash": params["hash"],
                 "message": params["message"]
             })
