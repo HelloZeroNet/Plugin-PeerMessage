@@ -39,6 +39,11 @@ class UiWebsocketPlugin(object):
             return
         self.site.p2p_last_recv["self"] = time.time()
 
+        # Not so much
+        if "p2p_size_limit" in content_json and len(json.dumps(message)) > content_json["p2p_size_limit"]:
+            self.response(to, {"error": "Too big message"})
+            return
+
 
         nonce = str(random.randint(0, 1000000000))
         msg_hash = hashlib.md5("%s,%s" % (nonce, json.dumps(message))).hexdigest()

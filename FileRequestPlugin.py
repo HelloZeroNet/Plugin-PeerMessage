@@ -38,6 +38,12 @@ class FileRequestPlugin(object):
             return
         site.p2p_last_recv[ip] = time.time()
 
+        # Not so much
+        if "p2p_size_limit" in content_json and len(json.dumps(params["message"])) > content_json["p2p_size_limit"]:
+            self.connection.log("Too big message from %s" % params["site"])
+            self.connection.badAction(7)
+            return
+
 
         # Send to WebSocket
         for ws in site.websockets:
