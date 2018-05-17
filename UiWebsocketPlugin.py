@@ -1,4 +1,5 @@
 from Plugin import PluginManager
+from util import SafeRe
 import hashlib
 import random
 import json
@@ -20,6 +21,18 @@ class UiWebsocketPlugin(object):
 
     # Broadcast message to other peers
     def actionPeerBroadcast(self, to, message, peer_count=5, broadcast=True, immediate=False, timeout=60):
+        # Check whether P2P messages are supported
+        content_json = self.site.storage.loadJson("content.json")
+        if "message_filter" not in content_json:
+            self.response(to, {"error": "Site %s doesn't support P2P messages" % self.site.address})
+            return
+
+        # Check whether the message matches passive filter
+        if not SafeRe.match(content_json["message_filter"], json.dumps(message)):
+            self.response(to, {"error": "Invalid message for site %s: %s" % (self.site.address, message)})
+            return
+
+
         nonce = str(random.randint(0, 1000000000))
         msg_hash = hashlib.md5("%s,%s" % (nonce, json.dumps(message))).hexdigest()
 
