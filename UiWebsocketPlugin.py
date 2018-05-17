@@ -23,12 +23,12 @@ class UiWebsocketPlugin(object):
     def actionPeerBroadcast(self, to, message, peer_count=5, broadcast=True, immediate=False, timeout=60):
         # Check whether P2P messages are supported
         content_json = self.site.storage.loadJson("content.json")
-        if "message_filter" not in content_json:
+        if "p2p_filter" not in content_json:
             self.response(to, {"error": "Site %s doesn't support P2P messages" % self.site.address})
             return
 
         # Check whether the message matches passive filter
-        if not SafeRe.match(content_json["message_filter"], json.dumps(message)):
+        if not SafeRe.match(content_json["p2p_filter"], json.dumps(message)):
             self.response(to, {"error": "Invalid message for site %s: %s" % (self.site.address, message)})
             return
 

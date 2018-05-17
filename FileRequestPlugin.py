@@ -11,7 +11,7 @@ class FileRequestPlugin(object):
         # Check whether P2P messages are supported
         site = self.sites.get(params["site"])
         content_json = site.storage.loadJson("content.json")
-        if "message_filter" not in content_json:
+        if "p2p_filter" not in content_json:
             self.connection.log("Site %s doesn't support P2P messages" % params["site"])
             self.connection.badAction(5)
             return
@@ -22,7 +22,7 @@ class FileRequestPlugin(object):
         site.p2p_received.append(params["hash"])
 
         # Check whether the message matches passive filter
-        if not SafeRe.match(content_json["message_filter"], json.dumps(params["message"])):
+        if not SafeRe.match(content_json["p2p_filter"], json.dumps(params["message"])):
             self.connection.log("Invalid message for site %s: %s" % (params["site"], params["message"]))
             self.connection.badAction(5)
             return
