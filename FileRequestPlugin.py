@@ -65,12 +65,15 @@ class FileRequestPlugin(object):
             if valid is True and not signature_address:
                 self.connection.log("Not signed message")
                 self.connection.badAction(5)
+                return
             elif isinstance(valid, str) and signature_address != valid:
                 self.connection.log("Message signature is invalid: %s not in [%r]" % (signature_address, valid))
                 self.connection.badAction(5)
+                return
             elif isinstance(valid, list) and signature_address not in valid:
                 self.connection.log("Message signature is invalid: %s not in %r" % (signature_address, valid))
                 self.connection.badAction(5)
+                return
 
 
         # Send to WebSocket
