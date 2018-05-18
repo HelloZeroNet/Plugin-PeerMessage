@@ -44,13 +44,29 @@ class FileRequestPlugin(object):
             self.connection.badAction(7)
             return
 
+        # Verify signature
+        if params["signature"]:
+            message = dict(**params)
+            del message["signature"]
+            del message["hash"]
+            message = json.dumps(message)
+
+            signature_address, signature = params["signature"].split("|")
+            what = "%s|%s|%s" % (signature_address, params["hash"], message)
+            if not CryptBitcoin.verify(what, signature_address, signature):
+                self.connection.log("Invalid signature")
+                self.connection.badAction(7)
+        else:
+            signature_address = ""
+
 
         # Send to WebSocket
         for ws in site.websockets:
             ws.cmd("peerReceive", {
                 "ip": ip,
                 "hash": params["hash"],
-                "message": params["message"]
+                "message": params["message"],
+                "signed_by": signature_address
             })
 
         # Maybe active filter will reply?

@@ -21,7 +21,7 @@ class UiWebsocketPlugin(object):
 
 
     # Broadcast message to other peers
-    def actionPeerBroadcast(self, to, message, peer_count=5, broadcast=True, immediate=False, timeout=60):
+    def actionPeerBroadcast(self, to, message, privatekey=None, peer_count=5, broadcast=True, immediate=False, timeout=60):
         # Check whether P2P messages are supported
         content_json = self.site.storage.loadJson("content.json")
         if "p2p_filter" not in content_json:
@@ -45,8 +45,19 @@ class UiWebsocketPlugin(object):
             return
 
 
+        # Generate message and sign it
+        all_message = {
+            "message": message,
+            "peer_count": peer_count,
+            "broadcast": broadcast,
+            "immediate": immediate,
+            "site": self.site.address
+        }
+
         nonce = str(random.randint(0, 1000000000))
-        msg_hash = hashlib.md5("%s,%s" % (nonce, json.dumps(message))).hexdigest()
+        msg_hash = hashlib.md5("%s,%s" % (nonce, json.dumps(all_message))).hexdigest()
+        all_message["signature"] = self.p2pGetSignature(msg_hash, json.dumps(all_message), privatekey)
+        all_message["hash"] = msg_hash
 
         peers = self.site.getConnectedPeers()
         if len(peers) < peer_count:  # Add more, non-connected peers if necessary
@@ -55,14 +66,7 @@ class UiWebsocketPlugin(object):
         # Send message to peers
         jobs = []
         for peer in peers:
-            jobs.append(gevent.spawn(self.p2pBroadcast, peer, {
-                "message": message,
-                "hash": msg_hash,
-                "peer_count": peer_count,
-                "broadcast": broadcast,
-                "immediate": immediate,
-                "site": self.site.address
-            }))
+            jobs.append(gevent.spawn(self.p2pBroadcast, peer, all_message))
 
         if not broadcast:
             # Makes sense to return result
@@ -82,6 +86,23 @@ class UiWebsocketPlugin(object):
             "ip": "%s:%s" % (peer.ip, peer.port)
             "reply": reply
         }
+
+    def p2pGetSignature(self, hash, data, privatekey):
+        # Get private key
+        if privatekey == "stored":
+            # Using site privatekey
+            privatekey = self.user.getSiteData(self.site.address).get("privatekey")
+        elif not privatekey and privatekey is not None:
+            # Using user privatekey
+            privatekey = self.user.getAuthPrivatekey(self.site.address)
+
+        # Generate signature
+        if privatekey:
+            from Crypt import CryptBitcoin
+            address = CryptBitcoin.privatekeyToAddress(privatekey)
+            return "%s|%s" % (address, CryptBitcoin.sign("%s|%s|%s" % (address, hash, data), privatekey))
+        else:
+            return ""
 
 
     def actionPeerInvalid(self, hash):
