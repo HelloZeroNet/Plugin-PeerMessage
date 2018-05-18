@@ -79,11 +79,20 @@ class UiWebsocketPlugin(object):
             "sent": True
         })
 
+        # Send message to myself
+        self.site.p2p_received.append(msg_hash)
+        self.cmd("peerReceive", {
+            "ip": "self",
+            "hash": msg_hash,
+            "message": message,
+            "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else ""
+        })
+
 
     def p2pBroadcast(self, peer, data):
         reply = peer.request("peerBroadcast", data)
         return {
-            "ip": "%s:%s" % (peer.ip, peer.port)
+            "ip": "%s:%s" % (peer.ip, peer.port),
             "reply": reply
         }
 
