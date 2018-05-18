@@ -59,6 +59,19 @@ class FileRequestPlugin(object):
         else:
             signature_address = ""
 
+        # Check that the signature address is correct
+        if "p2p_signed_only" in content_json:
+            valid = content_json["p2p_signed_only"]
+            if valid is True and not signature_address:
+                self.connection.log("Not signed message")
+                self.connection.badAction(5)
+            elif isinstance(valid, str) and signature_address != valid:
+                self.connection.log("Message signature is invalid: %s not in [%r]" % (signature_address, valid))
+                self.connection.badAction(5)
+            elif isinstance(valid, list) and signature_address not in valid:
+                self.connection.log("Message signature is invalid: %s not in %r" % (signature_address, valid))
+                self.connection.badAction(5)
+
 
         # Send to WebSocket
         for ws in site.websockets:
