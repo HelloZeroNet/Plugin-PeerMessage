@@ -54,9 +54,11 @@ class FileRequestPlugin(object):
 
             signature_address, signature = params["signature"].split("|")
             what = "%s|%s|%s" % (signature_address, params["hash"], message)
+            from Crypt import CryptBitcoin
             if not CryptBitcoin.verify(what, signature_address, signature):
                 self.connection.log("Invalid signature")
                 self.connection.badAction(7)
+                return
         else:
             signature_address = ""
 
