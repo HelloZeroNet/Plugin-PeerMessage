@@ -81,7 +81,7 @@ class FileRequestPlugin(object):
             ws.cmd("peerReceive", {
                 "ip": ip,
                 "hash": params["hash"],
-                "message": raw,
+                "message": raw["message"],
                 "signed_by": signature_address
             })
 
