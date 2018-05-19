@@ -21,6 +21,14 @@ class UiWebsocketPlugin(object):
         return res
 
 
+    # Allow to broadcast to any site
+    def hasSitePermission(self, address, cmd=None):
+        if super(UiWebsocketPlugin, self).hasSitePermission(address, cmd=cmd):
+            return True
+
+        return cmd == "peerBroadcast"
+
+
     # Broadcast message to other peers
     def actionPeerBroadcast(self, to, message, privatekey=None, peer_count=5, broadcast=True, immediate=False, timeout=60):
         # Check whether P2P messages are supported
