@@ -54,11 +54,16 @@ class UiWebsocketPlugin(object):
             "immediate": immediate,
             "site": self.site.address
         }
+        all_message = json.dumps(all_message)
 
         nonce = str(random.randint(0, 1000000000))
-        msg_hash = hashlib.md5("%s,%s" % (nonce, json.dumps(all_message))).hexdigest()
-        all_message["signature"] = self.p2pGetSignature(msg_hash, json.dumps(all_message), privatekey)
-        all_message["hash"] = msg_hash
+        msg_hash = hashlib.md5("%s,%s" % (nonce, all_message)).hexdigest()
+        signature = self.p2pGetSignature(msg_hash, all_message, privatekey)
+        all_message = {
+            "raw": all_message,
+            "signature": signature,
+            "hash": msg_hash
+        }
 
         peers = self.site.getConnectedPeers()
         if len(peers) < peer_count:  # Add more, non-connected peers if necessary
