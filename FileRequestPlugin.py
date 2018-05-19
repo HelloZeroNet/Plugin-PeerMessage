@@ -96,7 +96,7 @@ class FileRequestPlugin(object):
 
         # Save to cache
         if not site.websockets and raw["immediate"]:
-            self.p2p_unread.append({
+            site.p2p_unread.append({
                 "ip": "%s:%s" % (self.connection.ip, self.connection.port),
                 "hash": params["hash"],
                 "message": raw["message"]
