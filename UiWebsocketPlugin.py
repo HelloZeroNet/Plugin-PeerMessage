@@ -13,10 +13,16 @@ class UiWebsocketPlugin(object):
     def __init__(self, *args, **kwargs):
         res = super(UiWebsocketPlugin, self).__init__(*args, **kwargs)
 
-        # Flush immediate messages
-        for message in self.site.p2p_unread:
-            self.cmd("peerReceive", message)
-        self.site.p2p_unread = []
+        # Automatically join peerReceive
+        content_json = self.site.storage.loadJson("content.json")
+        if "p2p_filter" in content_json:
+            self.channels.append("peerReceive")
+
+            # Flush immediate messages
+            print "unread", self.site.p2p_unread
+            for message in self.site.p2p_unread:
+                self.cmd("peerReceive", message)
+            self.site.p2p_unread = []
 
         return res
 
@@ -95,8 +101,18 @@ class UiWebsocketPlugin(object):
 
         # Send message to myself
         self.site.p2p_received.append(msg_hash)
-        for ws in self.site.websockets:
+
+        websockets = [ws for ws in self.site.websockets if "peerReceive" in ws.channels]
+        for ws in websockets:
             ws.cmd("peerReceive", {
+                "ip": "self",
+                "hash": msg_hash,
+                "message": message,
+                "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else ""
+            })
+
+        if not websockets and immediate:
+            self.site.p2p_unread.append({
                 "ip": "self",
                 "hash": msg_hash,
                 "message": message,

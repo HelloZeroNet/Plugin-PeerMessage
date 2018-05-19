@@ -77,7 +77,8 @@ class FileRequestPlugin(object):
 
 
         # Send to WebSocket
-        for ws in site.websockets:
+        websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
+        for ws in websockets:
             ws.cmd("peerReceive", {
                 "ip": ip,
                 "hash": params["hash"],
@@ -86,7 +87,7 @@ class FileRequestPlugin(object):
             })
 
         # Maybe active filter will reply?
-        if site.websockets:
+        if websockets:
             # Wait for p2p_result
             result = gevent.spawn(self.p2pWaitMessage, site, params["hash"]).join()
             del site.p2p_result[params["hash"]]
@@ -95,11 +96,12 @@ class FileRequestPlugin(object):
                 return
 
         # Save to cache
-        if not site.websockets and raw["immediate"]:
+        if not websockets and raw["immediate"]:
             site.p2p_unread.append({
                 "ip": "%s:%s" % (self.connection.ip, self.connection.port),
                 "hash": params["hash"],
-                "message": raw["message"]
+                "message": raw["message"],
+                "signed_by": signature_address
             })
 
 

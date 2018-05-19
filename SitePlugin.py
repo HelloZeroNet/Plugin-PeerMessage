@@ -10,4 +10,5 @@ class SitePlugin(object):
         self.p2p_result = {}
         self.p2p_unread = []
         self.p2p_last_recv = {}
+
         return res
