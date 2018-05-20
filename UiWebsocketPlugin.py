@@ -148,14 +148,22 @@ class UiWebsocketPlugin(object):
             })
             return
 
+        # Generate hash
+        nonce = str(random.randint(0, 1000000000))
+        msg_hash = hashlib.md5("%s,%s" % (nonce, all_message)).hexdigest()
+
         # Add singature
-        message = json.dumps(message)
-        signature = self.p2pGetSignature("<unhashed>", message, privatekey)
+        message = json.dumps({
+            "message": message,
+            "site": self.site.address
+        })
+        signature = self.p2pGetSignature(msg_hash, message, privatekey)
 
 
         reply = peer.request("peerSend", {
             "raw": message,
-            "signature": signature
+            "signature": signature,
+            "hash": msg_hash
         })
         self.response(to, reply)
 
