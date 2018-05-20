@@ -20,11 +20,17 @@ class FileRequestPlugin(object):
         if "p2p_filter" not in content_json:
             self.connection.log("Site %s doesn't support P2P messages" % raw["site"])
             self.connection.badAction(5)
+            self.response({
+                "error": "Site %s doesn't support P2P messages" % raw["site"]
+            })
             return
 
         # Was the message received yet?
         if params["hash"] != "<unhashed>":
             if params["hash"] in site.p2p_received:
+                self.response({
+                    "error": "Already received, thanks"
+                })
                 return
             site.p2p_received.append(params["hash"])
 
@@ -33,12 +39,18 @@ class FileRequestPlugin(object):
         if not SafeRe.match(content_json["p2p_filter"], json.dumps(raw["message"])):
             self.connection.log("Invalid message for site %s: %s" % (raw["site"], raw["message"]))
             self.connection.badAction(5)
+            self.response({
+                "error": "Invalid message for site %s: %s" % (raw["site"], raw["message"])
+            })
             return
 
         # Not so fast
         if "p2p_freq_limit" in content_json and time.time() - site.p2p_last_recv.get(ip, 0) < content_json["p2p_freq_limit"]:
             self.connection.log("Too fast messages from %s" % raw["site"])
             self.connection.badAction(2)
+            self.response({
+                "error": "Too fast messages from %s" % raw["site"]
+            })
             return
         site.p2p_last_recv[ip] = time.time()
 
@@ -46,6 +58,9 @@ class FileRequestPlugin(object):
         if "p2p_size_limit" in content_json and len(json.dumps(raw["message"])) > content_json["p2p_size_limit"]:
             self.connection.log("Too big message from %s" % raw["site"])
             self.connection.badAction(7)
+            self.response({
+                "error": "Too big message from %s" % raw["site"]
+            })
             return
 
         # Verify signature
@@ -56,6 +71,9 @@ class FileRequestPlugin(object):
             if not CryptBitcoin.verify(what, signature_address, signature):
                 self.connection.log("Invalid signature")
                 self.connection.badAction(7)
+                self.response({
+                    "error": "Invalid signature"
+                })
                 return
         else:
             signature_address = ""
@@ -66,14 +84,23 @@ class FileRequestPlugin(object):
             if valid is True and not signature_address:
                 self.connection.log("Not signed message")
                 self.connection.badAction(5)
+                self.response({
+                    "error": "Not signed message"
+                })
                 return
             elif isinstance(valid, str) and signature_address != valid:
                 self.connection.log("Message signature is invalid: %s not in [%r]" % (signature_address, valid))
                 self.connection.badAction(5)
+                self.response({
+                    "error": "Message signature is invalid: %s not in [%r]" % (signature_address, valid)
+                })
                 return
             elif isinstance(valid, list) and signature_address not in valid:
                 self.connection.log("Message signature is invalid: %s not in %r" % (signature_address, valid))
                 self.connection.badAction(5)
+                self.response({
+                    "error": "Message signature is invalid: %s not in %r" % (signature_address, valid)
+                })
                 return
 
 
@@ -90,10 +117,13 @@ class FileRequestPlugin(object):
         # Maybe active filter will reply?
         if websockets:
             # Wait for p2p_result
-            result = gevent.spawn(self.p2pWaitMessage, site, params["hash"]).join()
+            result = gevent.spawn(self.p2pWaitMessage, site, params["hash"]).join(10)
             del site.p2p_result[params["hash"]]
             if not result:
                 self.connection.badAction(10)
+                self.response({
+                    "error": "Active filter: invalid"
+                })
                 return
 
         # Save to cache

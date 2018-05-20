@@ -88,17 +88,6 @@ class UiWebsocketPlugin(object):
         for peer in peers:
             jobs.append(gevent.spawn(self.p2pBroadcast, peer, all_message))
 
-        if not broadcast:
-            # Makes sense to return result
-            res = gevent.joinall(jobs, timeout)
-            self.response(to, res)
-            return
-
-        # Reply
-        self.response(to, {
-            "sent": True
-        })
-
         # Send message to myself
         self.site.p2p_received.append(msg_hash)
 
@@ -117,6 +106,17 @@ class UiWebsocketPlugin(object):
                 "hash": msg_hash,
                 "message": message,
                 "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else ""
+            })
+
+
+        if not broadcast:
+            # Makes sense to return result
+            res = gevent.joinall(jobs, timeout)
+            self.response(to, res)
+        else:
+            # Reply
+            self.response(to, {
+                "sent": True
             })
 
     # Send a message to IP
@@ -164,7 +164,7 @@ class UiWebsocketPlugin(object):
         peer = self.site.peers.get(ip)
         if not peer:
             self.response(to, {
-                "error": "Unknown peer %s" % ip
+                "error": "Unknown peer %s: not in %r" % (ip, self.site.peers)
             })
             return
         res = gevent.spawn(self.p2pBroadcast, peer, all_message).get()
