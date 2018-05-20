@@ -10,6 +10,14 @@ import gevent
 class FileRequestPlugin(object):
     # Re-broadcast to neighbour peers
     def actionPeerBroadcast(self, params):
+        gevent.spawn(self.handlePeerBroadcast, params)
+        gevent.sleep(8)
+        if not self.responded:
+            self.response({
+                "warning": "peerBroadcast(%r) timed out" % params
+            })
+
+    def handlePeerBroadcast(self, params):
         ip = "%s:%s" % (self.connection.ip, self.connection.port)
 
         raw = json.loads(params["raw"])
