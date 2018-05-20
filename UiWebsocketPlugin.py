@@ -19,7 +19,6 @@ class UiWebsocketPlugin(object):
             self.channels.append("peerReceive")
 
             # Flush immediate messages
-            print "unread", self.site.p2p_unread
             for message in self.site.p2p_unread:
                 self.cmd("peerReceive", message)
             self.site.p2p_unread = []
@@ -37,6 +36,7 @@ class UiWebsocketPlugin(object):
 
     # Broadcast message to other peers
     def actionPeerBroadcast(self, to, message, privatekey=None, peer_count=5, broadcast=True, immediate=False, timeout=60):
+        print "peerBroadcast(%r)" % message
         # Check whether P2P messages are supported
         content_json = self.site.storage.loadJson("content.json")
         if "p2p_filter" not in content_json:
@@ -120,6 +120,7 @@ class UiWebsocketPlugin(object):
             })
 
     def p2pBroadcast(self, peer, data):
+        print "Broadcast %r to %r" % (data, peer)
         reply = peer.request("peerBroadcast", data)
         if reply is None:
             return {
@@ -136,6 +137,7 @@ class UiWebsocketPlugin(object):
 
     # Send a message to IP
     def actionPeerSend(self, to, ip, message, privatekey=None):
+        print "peerSend(%r, %r)" % (ip, message)
         # Get peer or connect to it if it isn't cached
         peer = self.site.peers.get(ip)
         if not peer:
@@ -148,6 +150,8 @@ class UiWebsocketPlugin(object):
             })
             return
 
+        print "Use peer %r" % peer
+
         # Generate hash
         nonce = str(random.randint(0, 1000000000))
         all_message = json.dumps({
@@ -159,12 +163,19 @@ class UiWebsocketPlugin(object):
         # Add singature
         signature = self.p2pGetSignature(msg_hash, message, privatekey)
 
+        print "Send %r" % {
+            "raw": message,
+            "signature": signature,
+            "hash": msg_hash
+        }
+
 
         reply = peer.request("peerSend", {
             "raw": message,
             "signature": signature,
             "hash": msg_hash
         })
+        print "Replied: %r" % reply
         self.response(to, reply)
 
 
