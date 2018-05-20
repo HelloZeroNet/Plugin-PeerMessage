@@ -119,6 +119,49 @@ class UiWebsocketPlugin(object):
                 "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else ""
             })
 
+    # Send a message to IP
+    def actionPeerSend(self, to, ip, message, privatekey=None):
+        # Check whether P2P messages are supported
+        content_json = self.site.storage.loadJson("content.json")
+        if "p2p_filter" not in content_json:
+            self.response(to, {"error": "Site %s doesn't support P2P messages" % self.site.address})
+            return
+
+        # Check whether the message matches passive filter
+        if not SafeRe.match(content_json["p2p_filter"], json.dumps(message)):
+            self.response(to, {"error": "Invalid message for site %s: %s" % (self.site.address, message)})
+            return
+
+        # Not so fast
+        if "p2p_freq_limit" in content_json and time.time() - self.site.p2p_last_recv.get("self", 0) < content_json["p2p_freq_limit"]:
+            self.response(to, {"error": "Too fast messages"})
+            return
+        self.site.p2p_last_recv["self"] = time.time()
+
+        # Not so much
+        if "p2p_size_limit" in content_json and len(json.dumps(message)) > content_json["p2p_size_limit"]:
+            self.response(to, {"error": "Too big message"})
+            return
+
+
+        # Generate message and sign it
+        all_message = {
+            "message": message,
+            "site": self.site.address
+        }
+        all_message = json.dumps(all_message)
+
+        signature = self.p2pGetSignature("<unhashed>", all_message, privatekey)
+        all_message = {
+            "raw": all_message,
+            "signature": signature
+        }
+
+        # Send message to peer
+        peer = self.site.peers.get(ip)
+        res = gevent.spawn(self.p2pBroadcast, peer, all_message).join()
+        self.response(to, res["reply"])
+
 
     def p2pBroadcast(self, peer, data):
         reply = peer.request("peerBroadcast", data)
