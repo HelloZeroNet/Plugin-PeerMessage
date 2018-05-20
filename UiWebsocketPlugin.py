@@ -173,6 +173,14 @@ class UiWebsocketPlugin(object):
 
     def p2pBroadcast(self, peer, data):
         reply = peer.request("peerBroadcast", data)
+        if reply is None:
+            return {
+                "ip": "%s:%s" % (peer.ip, peer.port),
+                "reply": {
+                    "error": "Connection error"
+                }
+            }
+
         return {
             "ip": "%s:%s" % (peer.ip, peer.port),
             "reply": reply
