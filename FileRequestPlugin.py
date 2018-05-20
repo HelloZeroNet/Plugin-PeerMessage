@@ -117,7 +117,7 @@ class FileRequestPlugin(object):
         # Maybe active filter will reply?
         if websockets:
             # Wait for p2p_result
-            result = gevent.spawn(self.p2pWaitMessage, site, params["hash"]).join(30)
+            result = gevent.spawn(self.p2pWaitMessage, site, params["hash"]).join(8)
             if params["hash"] in site.p2p_result:
                 del site.p2p_result[params["hash"]]
             if result is False:
@@ -155,6 +155,10 @@ class FileRequestPlugin(object):
             del site.p2p_reply[params["hash"]]
             self.response({
                 "reply": reply
+            })
+        else:
+            self.response({
+                "reply": None
             })
 
 
