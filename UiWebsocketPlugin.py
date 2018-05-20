@@ -147,6 +147,9 @@ class UiWebsocketPlugin(object):
         # Generate message and sign it
         all_message = {
             "message": message,
+            "peer_count": 1,
+            "broadcast": False,
+            "immediate": False,
             "site": self.site.address
         }
         all_message = json.dumps(all_message)
@@ -155,8 +158,6 @@ class UiWebsocketPlugin(object):
         all_message = {
             "hash": "<unhashed>",
             "raw": all_message,
-            "broadcast": False,
-            "immediate": False,
             "signature": signature
         }
 
