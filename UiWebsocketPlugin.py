@@ -164,6 +164,9 @@ class UiWebsocketPlugin(object):
         # Send message to peer
         peer = self.site.peers.get(ip)
         if not peer:
+            mip, mport = ip.split(":")
+            peer = self.site.addPeer(mip, mport, source="P2P-messages")
+        if not peer:
             self.response(to, {
                 "error": "Unknown peer %s: not in %r" % (ip, self.site.peers)
             })
