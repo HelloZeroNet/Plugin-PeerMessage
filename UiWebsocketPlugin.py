@@ -134,6 +134,33 @@ class UiWebsocketPlugin(object):
             "reply": reply
         }
 
+    # Send a message to IP
+    def actionPeerSend(self, to, ip, message, privatekey=None):
+        # Get peer or connect to it if it isn't cached
+        peer = self.site.peers.get(ip)
+        if not peer:
+            mip, mport = ip.split(":")
+            peer = self.site.addPeer(mip, mport, source="peerSend")
+        if not peer:
+            # Couldn't connect to this IP
+            self.response(to, {
+                "error": "Could not find peer %s" % ip
+            })
+            return
+
+        # Add singature
+        message = json.dumps(message)
+        signature = self.p2pGetSignature("<unhashed>", message, privatekey)
+
+
+        reply = peer.request("peerSend", {
+            "raw": message,
+            "signature": signature
+        })
+        self.response(to, reply)
+
+
+
     def p2pGetSignature(self, hash, data, privatekey):
         # Get private key
         if privatekey == "stored":
