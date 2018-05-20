@@ -146,7 +146,7 @@ class FileRequestPlugin(object):
 
             # Send message to peers
             for peer in peers:
-                gevent.spawn(peer.connection.request, "peerBroadcast", params)
+                gevent.spawn(peer.request, "peerBroadcast", params)
 
 
         if websockets and not raw["broadcast"]:
