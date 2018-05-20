@@ -29,7 +29,7 @@ class FileRequestPlugin(object):
         if params["hash"] != "<unhashed>":
             if params["hash"] in site.p2p_received:
                 self.response({
-                    "error": "Already received, thanks"
+                    "warning": "Already received, thanks"
                 })
                 return
             site.p2p_received.append(params["hash"])
