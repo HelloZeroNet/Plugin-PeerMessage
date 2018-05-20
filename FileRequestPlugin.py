@@ -23,9 +23,10 @@ class FileRequestPlugin(object):
             return
 
         # Was the message received yet?
-        if params["hash"] in site.p2p_received:
-            return
-        site.p2p_received.append(params["hash"])
+        if params["hash"] != "<unhashed>":
+            if params["hash"] in site.p2p_received:
+                return
+            site.p2p_received.append(params["hash"])
 
 
         # Check whether the message matches passive filter

@@ -153,6 +153,7 @@ class UiWebsocketPlugin(object):
 
         signature = self.p2pGetSignature("<unhashed>", all_message, privatekey)
         all_message = {
+            "hash": "<unhashed>",
             "raw": all_message,
             "signature": signature
         }
