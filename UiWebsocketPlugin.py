@@ -155,6 +155,8 @@ class UiWebsocketPlugin(object):
         all_message = {
             "hash": "<unhashed>",
             "raw": all_message,
+            "broadcast": False,
+            "immediate": False,
             "signature": signature
         }
 
