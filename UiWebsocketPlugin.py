@@ -161,17 +161,17 @@ class UiWebsocketPlugin(object):
         msg_hash = hashlib.md5("%s,%s" % (nonce, all_message)).hexdigest()
 
         # Add singature
-        signature = self.p2pGetSignature(msg_hash, message, privatekey)
+        signature = self.p2pGetSignature(msg_hash, all_message, privatekey)
 
         print "Send %r" % {
-            "raw": message,
+            "raw": all_message,
             "signature": signature,
             "hash": msg_hash
         }
 
 
         reply = peer.request("peerSend", {
-            "raw": message,
+            "raw": all_message,
             "signature": signature,
             "hash": msg_hash
         })
