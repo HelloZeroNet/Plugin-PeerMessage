@@ -149,3 +149,6 @@ class UiWebsocketPlugin(object):
         self.p2p_result[hash] = False
     def actionPeerValid(self, hash):
         self.p2p_result[hash] = True
+
+    def actionPeerReply(self, hash, reply):
+        self.p2p_reply[hash] = reply

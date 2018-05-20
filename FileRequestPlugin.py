@@ -117,8 +117,21 @@ class FileRequestPlugin(object):
                 gevent.spawn(peer.connection.request, "peerBroadcast", params)
 
 
+        if websockets and not raw["broadcast"]:
+            # Make sense to wait for the result from some websocket
+            reply = gevent.spawn(self.p2pWaitReply, site, params["hash"]).join()
+            del site.p2p_reply[params["hash"]]
+            self.response({
+                "reply": reply
+            })
+
+
     def p2pWaitMessage(self, site, hash):
         while hash not in site.p2p_result:
             gevent.sleep(0.5)
-
         return site.p2p_result[hash]
+
+    def p2pWaitReply(self, site, hash):
+        while hash not in site.p2p_reply:
+            gevent.sleep(0.5)
+        return site.p2p_reply[hash]
