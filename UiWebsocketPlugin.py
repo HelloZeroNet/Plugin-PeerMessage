@@ -160,7 +160,12 @@ class UiWebsocketPlugin(object):
 
         # Send message to peer
         peer = self.site.peers.get(ip)
-        res = gevent.spawn(self.p2pBroadcast, peer, all_message).join()
+        if not peer:
+            self.response(to, {
+                "error": "Unknown peer %s" % ip
+            })
+            return
+        res = gevent.spawn(self.p2pBroadcast, peer, all_message).get()
         self.response(to, res["reply"])
 
 
