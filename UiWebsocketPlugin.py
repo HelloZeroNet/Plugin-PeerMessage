@@ -150,13 +150,13 @@ class UiWebsocketPlugin(object):
 
         # Generate hash
         nonce = str(random.randint(0, 1000000000))
-        msg_hash = hashlib.md5("%s,%s" % (nonce, all_message)).hexdigest()
-
-        # Add singature
-        message = json.dumps({
+        all_message = json.dumps({
             "message": message,
             "site": self.site.address
         })
+        msg_hash = hashlib.md5("%s,%s" % (nonce, all_message)).hexdigest()
+
+        # Add singature
         signature = self.p2pGetSignature(msg_hash, message, privatekey)
 
 
