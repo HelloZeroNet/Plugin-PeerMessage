@@ -39,9 +39,8 @@ class UiWebsocketPlugin(object):
         print "peerBroadcast(%r)" % message
 
         # Check message
-        if not self.peerCheckMessage(message):
+        if not self.peerCheckMessage(to, message):
             return
-
 
         # Generate message and sign it
         all_message = {
@@ -115,7 +114,7 @@ class UiWebsocketPlugin(object):
         print "peerSend(%r, %r, to=%r)" % (ip, message, to)
 
         # Check message
-        if not self.peerCheckMessage(message):
+        if not self.peerCheckMessage(to_, message):
             return
 
 
@@ -192,7 +191,7 @@ class UiWebsocketPlugin(object):
         }
 
 
-    def peerCheckMessage(self, message):
+    def peerCheckMessage(self, to, message):
         # Check whether P2P messages are supported
         content_json = self.site.storage.loadJson("content.json")
         if "p2p_filter" not in content_json:
