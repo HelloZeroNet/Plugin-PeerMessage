@@ -173,10 +173,11 @@ class UiWebsocketPlugin(object):
 
 
     def actionPeerInvalid(self, to, hash):
-        self.site.p2p_result[hash].set(False)
+        if hash in self.site.p2p_result:
+            self.site.p2p_result[hash].set(False)
     def actionPeerValid(self, to, hash):
-        print "Set result %s" % hash
-        self.site.p2p_result[hash].set(True)
+        if hash in self.site.p2p_result:
+            self.site.p2p_result[hash].set(True)
 
 
 
