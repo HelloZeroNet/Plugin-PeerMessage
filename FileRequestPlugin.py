@@ -33,16 +33,18 @@ class FileRequestPlugin(object):
                 "signed_by": signature_address
             })
 
+
+        self.response({
+            "ok": "thx"
+        })
+
         # Maybe active filter will reply?
         if websockets:
             # Wait for p2p_result
-            result = site.p2p_result[params["hash"]].get(timeout=8)
+            result = site.p2p_result[params["hash"]].get()
             del site.p2p_result[params["hash"]]
-            if result is False:
+            if not result:
                 self.connection.badAction(10)
-                self.response({
-                    "error": "Active filter: invalid"
-                })
                 return
 
         # Save to cache
@@ -54,10 +56,6 @@ class FileRequestPlugin(object):
                 "signed_by": signature_address
             })
 
-
-        self.response({
-            "ok": "thx"
-        })
 
         # Now send to neighbour peers
         if raw["broadcast"]:
