@@ -104,8 +104,12 @@ class FileRequestPlugin(object):
                 return
 
 
-        # Send to WebSocket
         websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
+        if websockets:
+            # Wait for result (valid/invalid)
+            site.p2p_result[params["hash"]] = gevent.event.AsyncResult()
+
+        # Send to WebSocket
         for ws in websockets:
             ws.cmd("peerReceive", {
                 "ip": ip,
@@ -117,9 +121,8 @@ class FileRequestPlugin(object):
         # Maybe active filter will reply?
         if websockets:
             # Wait for p2p_result
-            result = gevent.spawn(self.p2pWaitMessage, site, params["hash"]).get(8)
-            if params["hash"] in site.p2p_result:
-                del site.p2p_result[params["hash"]]
+            result = site.p2p_result[params["hash"]].get(timeout=8)
+            del site.p2p_result[params["hash"]]
             if result is False:
                 self.connection.badAction(10)
                 self.response({
@@ -278,10 +281,6 @@ class FileRequestPlugin(object):
 
 
 
-    def p2pWaitMessage(self, site, hash):
-        while hash not in site.p2p_result:
-            gevent.sleep(0.5)
-        return site.p2p_result[hash]
 
     def p2pWaitReply(self, site, hash):
         while hash not in site.p2p_reply:

@@ -202,9 +202,9 @@ class UiWebsocketPlugin(object):
 
 
     def actionPeerInvalid(self, to, hash):
-        self.site.p2p_result[hash] = False
+        self.site.p2p_result[hash].set(False)
     def actionPeerValid(self, to, hash):
-        self.site.p2p_result[hash] = True
+        self.site.p2p_result[hash].set(True)
 
     def actionPeerReply(self, to, hash, reply):
         print "Replied to %s with %s" % (hash, reply)
