@@ -38,8 +38,6 @@ class UiWebsocketPlugin(object):
     def actionPeerBroadcast(self, *args, **kwargs):
         gevent.spawn(self.handlePeerBroadcast, *args, **kwargs)
     def handlePeerBroadcast(self, to, message, privatekey=None, peer_count=5, broadcast=True, immediate=False, timeout=60):
-        print "peerBroadcast(%r)" % message
-
         # Check message
         if not self.peerCheckMessage(to, message):
             return
@@ -96,7 +94,6 @@ class UiWebsocketPlugin(object):
             })
 
     def p2pBroadcast(self, peer, data):
-        print "Broadcast %r to %r" % (data, peer)
         reply = peer.request("peerBroadcast", data)
         if reply is None:
             return {
@@ -115,8 +112,6 @@ class UiWebsocketPlugin(object):
     def actionPeerSend(self, *args, **kwargs):
         gevent.spawn(self.handlePeerSend, *args, **kwargs)
     def handlePeerSend(self, to_, ip, message, privatekey=None, to=None):
-        print "peerSend(%r, %r, to=%r)" % (ip, message, to)
-
         # Check message
         if not self.peerCheckMessage(to_, message):
             return
@@ -134,8 +129,6 @@ class UiWebsocketPlugin(object):
             })
             return
 
-        print "Use peer %r" % peer
-
         # Generate hash
         all_message = {
             "message": message,
@@ -146,15 +139,12 @@ class UiWebsocketPlugin(object):
 
         all_message = self.peerGenerateMessage(all_message, privatekey)
 
-        print "Send %r" % all_message
-
         # Send message
         self.site.p2p_to[all_message["hash"]] = gevent.event.AsyncResult()
         peer.request("peerSend", all_message)
 
         # Get reply
         reply = self.site.p2p_to[all_message["hash"]].get()
-        print "Got a reply to %s: %s" % (all_message["hash"], reply)
         self.response(to_, reply)
 
 
@@ -202,26 +192,22 @@ class UiWebsocketPlugin(object):
         # Check whether P2P messages are supported
         content_json = self.site.storage.loadJson("content.json")
         if "p2p_filter" not in content_json:
-            print "Site %s doesn't support P2P messages" % self.site.address
             self.response(to, {"error": "Site %s doesn't support P2P messages" % self.site.address})
             return False
 
         # Check whether the message matches passive filter
         if not SafeRe.match(content_json["p2p_filter"], json.dumps(message)):
-            print "Invalid message for site %s: %s" % (self.site.address, message)
             self.response(to, {"error": "Invalid message for site %s: %s" % (self.site.address, message)})
             return False
 
         # Not so fast
         if "p2p_freq_limit" in content_json and time.time() - self.site.p2p_last_recv.get("self", 0) < content_json["p2p_freq_limit"]:
-            print "Too fast messages"
             self.response(to, {"error": "Too fast messages"})
             return False
         self.site.p2p_last_recv["self"] = time.time()
 
         # Not so much
         if "p2p_size_limit" in content_json and len(json.dumps(message)) > content_json["p2p_size_limit"]:
-            print "Too big message"
             self.response(to, {"error": "Too big message"})
             return False
 
