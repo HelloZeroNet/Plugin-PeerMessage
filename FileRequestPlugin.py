@@ -23,6 +23,7 @@ class FileRequestPlugin(object):
         if websockets:
             # Wait for result (valid/invalid)
             site.p2p_result[params["hash"]] = gevent.event.AsyncResult()
+            print "Create result %s" % params["hash"]
 
         # Send to WebSocket
         for ws in websockets:
@@ -42,6 +43,7 @@ class FileRequestPlugin(object):
         if websockets:
             # Wait for p2p_result
             result = site.p2p_result[params["hash"]].get()
+            print "Delete result %s" % params["hash"]
             del site.p2p_result[params["hash"]]
             if not result:
                 self.connection.badAction(10)
@@ -96,6 +98,11 @@ class FileRequestPlugin(object):
             site.p2p_reply[params["hash"]] = gevent.event.AsyncResult()
 
             websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
+            if websockets:
+                # Wait for result (valid/invalid)
+                site.p2p_result[params["hash"]] = gevent.event.AsyncResult()
+                print "Create result %s" % params["hash"]
+
             for ws in websockets:
                 ws.cmd("peerReceive", {
                     "ip": ip,
@@ -103,6 +110,15 @@ class FileRequestPlugin(object):
                     "message": raw["message"],
                     "signed_by": signature_address
                 })
+
+            # Maybe active filter will reply?
+            if websockets:
+                # Wait for p2p_result
+                result = site.p2p_result[params["hash"]].get()
+                print "Delete result %s" % params["hash"]
+                del site.p2p_result[params["hash"]]
+                if not result:
+                    self.connection.badAction(10)
 
 
     def peerCheckMessage(self, raw):

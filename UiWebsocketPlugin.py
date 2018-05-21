@@ -175,6 +175,7 @@ class UiWebsocketPlugin(object):
     def actionPeerInvalid(self, to, hash):
         self.site.p2p_result[hash].set(False)
     def actionPeerValid(self, to, hash):
+        print "Set result %s" % hash
         self.site.p2p_result[hash].set(True)
 
 
