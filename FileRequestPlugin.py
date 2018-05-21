@@ -15,7 +15,7 @@ class FileRequestPlugin(object):
 
         raw = json.loads(params["raw"])
 
-        res, signature_address = self.peerCheckMessage(raw)
+        res, signature_address = self.peerCheckMessage(raw, params)
         if not res:
             return
 
@@ -78,7 +78,7 @@ class FileRequestPlugin(object):
         raw = json.loads(params["raw"])
 
 
-        res, signature_address = self.peerCheckMessage(raw)
+        res, signature_address = self.peerCheckMessage(raw, params)
         if not res:
             return
 
@@ -121,7 +121,7 @@ class FileRequestPlugin(object):
                     self.connection.badAction(10)
 
 
-    def peerCheckMessage(self, raw):
+    def peerCheckMessage(self, raw, params):
         # Check whether P2P messages are supported
         site = self.sites.get(raw["site"])
         content_json = site.storage.loadJson("content.json")
