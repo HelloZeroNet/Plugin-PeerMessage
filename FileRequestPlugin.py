@@ -15,13 +15,11 @@ class FileRequestPlugin(object):
 
         raw = json.loads(params["raw"])
 
-        try:
-            res, signature_address = self.peerCheckMessage(raw, params, ip)
-            if not res:
-                return
-        except Exception as e:
-            print(e)
+        res, signature_address = self.peerCheckMessage(raw, params, ip)
+        if not res:
+            return
 
+        site = self.sites.get(raw["site"])
         websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
         if websockets:
             # Wait for result (valid/invalid)
@@ -89,6 +87,7 @@ class FileRequestPlugin(object):
             "ok": "thx"
         })
 
+        site = self.sites.get(raw["site"])
         if "to" in raw:
             # This is a reply to peerSend
             site.p2p_to[raw["to"]].set({
