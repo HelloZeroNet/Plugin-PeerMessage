@@ -111,8 +111,8 @@ class UiWebsocketPlugin(object):
         }
 
     # Send a message to IP
-    def actionPeerSend(self, to, ip, message, privatekey=None):
-        print "peerSend(%r, %r)" % (ip, message)
+    def actionPeerSend(self, to, ip, message, privatekey=None, to=None):
+        print "peerSend(%r, %r, to=%r)" % (ip, message, to)
 
         # Check message
         if not self.peerCheckMessage(message):
@@ -138,18 +138,20 @@ class UiWebsocketPlugin(object):
             "message": message,
             "site": self.site.address
         }
+        if to:
+            all_message["to"] = to
 
         all_message = self.peerGenerateMessage(all_message, privatekey)
 
         print "Send %r" % all_message
 
+        # Send message
+        self.site.p2p_to[all_message["hash"]] = gevent.event.AsyncResult()
+        peer.request("peerSend", all_message)
 
-        reply = peer.request("peerSend", all_message)
-        if "reply" in reply:
-            print "Replied: %r" % reply
-            self.response(to, reply["reply"])
-        else:
-            print "Received"
+        # Get reply
+        reply = self.site.p2p_to[all_message["hash"]].get()
+        self.response(to, reply)
 
 
 
@@ -175,10 +177,6 @@ class UiWebsocketPlugin(object):
         self.site.p2p_result[hash].set(False)
     def actionPeerValid(self, to, hash):
         self.site.p2p_result[hash].set(True)
-
-    def actionPeerReply(self, to, hash, reply):
-        print "Replied to %s with %s" % (hash, reply)
-        self.site.p2p_reply[hash].set(reply)
 
 
 

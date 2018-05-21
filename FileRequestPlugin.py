@@ -15,15 +15,14 @@ class FileRequestPlugin(object):
 
         raw = json.loads(params["raw"])
 
-        if not self.peerCheckMessage():
+        res, signature_address = self.peerCheckMessage()
+        if not res:
             return
 
         websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
         if websockets:
             # Wait for result (valid/invalid)
             site.p2p_result[params["hash"]] = gevent.event.AsyncResult()
-
-        site.p2p_reply[params["hash"]] = gevent.event.AsyncResult()
 
         # Send to WebSocket
         for ws in websockets:
@@ -56,6 +55,10 @@ class FileRequestPlugin(object):
             })
 
 
+        self.response({
+            "ok": "thx"
+        })
+
         # Now send to neighbour peers
         if raw["broadcast"]:
             # Get peer list
@@ -68,20 +71,6 @@ class FileRequestPlugin(object):
                 gevent.spawn(peer.request, "peerBroadcast", params)
 
 
-        if websockets and not raw["broadcast"]:
-            # Make sense to wait for the result from some websocket
-            reply = site.p2p_reply[params["hash"]].get(timeout=8)
-            del site.p2p_reply[params["hash"]]
-            print "Reply %r (%s)" % (reply, raw["message"])
-            self.response({
-                "reply": reply
-            })
-        else:
-            print "Reply [None] (%s)" % raw["message"]
-            self.response({
-                "reply": None
-            })
-
     # Receive by-ip messages
     def actionPeerSend(self, params):
         print "Got peerSend: %r" % params
@@ -89,36 +78,33 @@ class FileRequestPlugin(object):
         raw = json.loads(params["raw"])
 
 
-        if not self.peerCheckMessage():
+        res, signature_address = self.peerCheckMessage()
+        if not res:
             return
 
-        site.p2p_reply[params["hash"]] = gevent.event.AsyncResult()
+        self.response({
+            "ok": "thx"
+        })
 
-        websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
-        for ws in websockets:
-            ws.cmd("peerReceive", {
-                "ip": ip,
+        if "to" in raw:
+            # This is a reply to peerSend
+            site.p2p_to[raw["to"]].set({
                 "hash": params["hash"],
                 "message": raw["message"],
                 "signed_by": signature_address
             })
+        else:
+            # Broadcast
+            site.p2p_reply[params["hash"]] = gevent.event.AsyncResult()
 
-        # Ask WebSocket for response
-        if websockets:
-            reply = site.p2p_reply[params["hash"]].get(timeout=8)
-            print "Replied to (send) %s: %s" % (raw, reply)
-            if reply is not None:
-                self.response({
-                    "ok": "Replied",
-                    "reply": reply
+            websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
+            for ws in websockets:
+                ws.cmd("peerReceive", {
+                    "ip": ip,
+                    "hash": params["hash"],
+                    "message": raw["message"],
+                    "signed_by": signature_address
                 })
-                return
-
-        # Couldn't get response, just reply success
-        print "Didn't reply to (send) %s" % raw
-        self.response({
-            "ok": "Received"
-        })
 
 
     def peerCheckMessage(self, raw):
@@ -131,14 +117,14 @@ class FileRequestPlugin(object):
             self.response({
                 "error": "Site %s doesn't support P2P messages" % raw["site"]
             })
-            return False
+            return False, ""
 
         # Was the message received yet?
         if params["hash"] in site.p2p_received:
             self.response({
                 "warning": "Already received, thanks"
             })
-            return False
+            return False, ""
         site.p2p_received.append(params["hash"])
 
         # Check whether the message matches passive filter
@@ -148,7 +134,7 @@ class FileRequestPlugin(object):
             self.response({
                 "error": "Invalid message for site %s: %s" % (raw["site"], raw["message"])
             })
-            return False
+            return False, ""
 
         # Not so fast
         if "p2p_freq_limit" in content_json and time.time() - site.p2p_last_recv.get(ip, 0) < content_json["p2p_freq_limit"]:
@@ -157,7 +143,7 @@ class FileRequestPlugin(object):
             self.response({
                 "error": "Too fast messages from %s" % raw["site"]
             })
-            return False
+            return False, ""
         site.p2p_last_recv[ip] = time.time()
 
         # Not so much
@@ -167,7 +153,7 @@ class FileRequestPlugin(object):
             self.response({
                 "error": "Too big message from %s" % raw["site"]
             })
-            return False
+            return False, ""
 
         # Verify signature
         if params["signature"]:
@@ -180,7 +166,7 @@ class FileRequestPlugin(object):
                 self.response({
                     "error": "Invalid signature"
                 })
-                return False
+                return False, ""
         else:
             signature_address = ""
 
@@ -193,20 +179,20 @@ class FileRequestPlugin(object):
                 self.response({
                     "error": "Not signed message"
                 })
-                return False
+                return False, ""
             elif isinstance(valid, str) and signature_address != valid:
                 self.connection.log("Message signature is invalid: %s not in [%r]" % (signature_address, valid))
                 self.connection.badAction(5)
                 self.response({
                     "error": "Message signature is invalid: %s not in [%r]" % (signature_address, valid)
                 })
-                return False
+                return False, ""
             elif isinstance(valid, list) and signature_address not in valid:
                 self.connection.log("Message signature is invalid: %s not in %r" % (signature_address, valid))
                 self.connection.badAction(5)
                 self.response({
                     "error": "Message signature is invalid: %s not in %r" % (signature_address, valid)
                 })
-                return False
+                return False, ""
 
-        return True
+        return True, signature_address
