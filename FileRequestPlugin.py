@@ -123,7 +123,7 @@ class FileRequestPlugin(object):
 
     def peerCheckMessage(self, raw, params, ip):
         # Calculate hash from nonce
-        msg_hash = hashlib.md5("%s,%s" % (params["nonce"], params["raw"])).hexdigest()
+        msg_hash = hashlib.sha256("%s,%s" % (params["nonce"], params["raw"])).hexdigest()
 
         # Check whether P2P messages are supported
         site = self.sites.get(raw["site"])
