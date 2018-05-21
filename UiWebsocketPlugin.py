@@ -111,7 +111,7 @@ class UiWebsocketPlugin(object):
         }
 
     # Send a message to IP
-    def actionPeerSend(self, to, ip, message, privatekey=None, to=None):
+    def actionPeerSend(self, to_, ip, message, privatekey=None, to=None):
         print "peerSend(%r, %r, to=%r)" % (ip, message, to)
 
         # Check message
@@ -126,7 +126,7 @@ class UiWebsocketPlugin(object):
             peer = self.site.addPeer(mip, mport, source="peerSend")
         if not peer:
             # Couldn't connect to this IP
-            self.response(to, {
+            self.response(to_, {
                 "error": "Could not find peer %s" % ip
             })
             return
@@ -151,7 +151,7 @@ class UiWebsocketPlugin(object):
 
         # Get reply
         reply = self.site.p2p_to[all_message["hash"]].get()
-        self.response(to, reply)
+        self.response(to_, reply)
 
 
 
