@@ -15,9 +15,12 @@ class FileRequestPlugin(object):
 
         raw = json.loads(params["raw"])
 
-        res, signature_address = self.peerCheckMessage(raw, params)
-        if not res:
-            return
+        try:
+            res, signature_address = self.peerCheckMessage(raw, params, ip)
+            if not res:
+                return
+        except Exception as e:
+            print(e)
 
         websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
         if websockets:
@@ -78,7 +81,7 @@ class FileRequestPlugin(object):
         raw = json.loads(params["raw"])
 
 
-        res, signature_address = self.peerCheckMessage(raw, params)
+        res, signature_address = self.peerCheckMessage(raw, params, ip)
         if not res:
             return
 
@@ -121,7 +124,7 @@ class FileRequestPlugin(object):
                     self.connection.badAction(10)
 
 
-    def peerCheckMessage(self, raw, params):
+    def peerCheckMessage(self, raw, params, ip):
         # Check whether P2P messages are supported
         site = self.sites.get(raw["site"])
         content_json = site.storage.loadJson("content.json")
