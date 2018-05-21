@@ -3,6 +3,7 @@ from util import SafeRe
 import json
 import time
 import gevent
+import hashlib
 
 
 
@@ -16,7 +17,7 @@ class FileRequestPlugin(object):
 
         raw = json.loads(params["raw"])
 
-        res, signature_address = self.peerCheckMessage(raw, params, ip)
+        res, signature_address, msg_hash = self.peerCheckMessage(raw, params, ip)
         if not res:
             return
 
@@ -29,13 +30,13 @@ class FileRequestPlugin(object):
         websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
         if websockets:
             # Wait for result (valid/invalid)
-            site.p2p_result[params["hash"]] = gevent.event.AsyncResult()
+            site.p2p_result[msg_hash] = gevent.event.AsyncResult()
 
         # Send to WebSocket
         for ws in websockets:
             ws.cmd("peerReceive", {
                 "ip": ip,
-                "hash": params["hash"],
+                "hash": msg_hash,
                 "message": raw["message"],
                 "signed_by": signature_address
             })
@@ -44,8 +45,8 @@ class FileRequestPlugin(object):
         # Maybe active filter will reply?
         if websockets:
             # Wait for p2p_result
-            result = site.p2p_result[params["hash"]].get()
-            del site.p2p_result[params["hash"]]
+            result = site.p2p_result[msg_hash].get()
+            del site.p2p_result[msg_hash]
             if not result:
                 self.connection.badAction(10)
                 return
@@ -54,7 +55,7 @@ class FileRequestPlugin(object):
         if not websockets and raw["immediate"]:
             site.p2p_unread.append({
                 "ip": "%s:%s" % (self.connection.ip, self.connection.port),
-                "hash": params["hash"],
+                "hash": msg_hash,
                 "message": raw["message"],
                 "signed_by": signature_address
             })
@@ -80,7 +81,7 @@ class FileRequestPlugin(object):
         raw = json.loads(params["raw"])
 
 
-        res, signature_address = self.peerCheckMessage(raw, params, ip)
+        res, signature_address, msg_hash = self.peerCheckMessage(raw, params, ip)
         if not res:
             return
 
@@ -92,7 +93,7 @@ class FileRequestPlugin(object):
         if "to" in raw:
             # This is a reply to peerSend
             site.p2p_to[raw["to"]].set({
-                "hash": params["hash"],
+                "hash": msg_hash,
                 "message": raw["message"],
                 "signed_by": signature_address
             })
@@ -101,12 +102,12 @@ class FileRequestPlugin(object):
             websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
             if websockets:
                 # Wait for result (valid/invalid)
-                site.p2p_result[params["hash"]] = gevent.event.AsyncResult()
+                site.p2p_result[msg_hash] = gevent.event.AsyncResult()
 
             for ws in websockets:
                 ws.cmd("peerReceive", {
                     "ip": ip,
-                    "hash": params["hash"],
+                    "hash": msg_hash,
                     "message": raw["message"],
                     "signed_by": signature_address
                 })
@@ -114,13 +115,16 @@ class FileRequestPlugin(object):
             # Maybe active filter will reply?
             if websockets:
                 # Wait for p2p_result
-                result = site.p2p_result[params["hash"]].get()
-                del site.p2p_result[params["hash"]]
+                result = site.p2p_result[msg_hash].get()
+                del site.p2p_result[msg_hash]
                 if not result:
                     self.connection.badAction(10)
 
 
     def peerCheckMessage(self, raw, params, ip):
+        # Calculate hash from nonce
+        msg_hash = hashlib.md5("%s,%s" % (params["nonce"], params["raw"])).hexdigest()
+
         # Check whether P2P messages are supported
         site = self.sites.get(raw["site"])
         content_json = site.storage.loadJson("content.json")
@@ -133,12 +137,12 @@ class FileRequestPlugin(object):
             return False, ""
 
         # Was the message received yet?
-        if params["hash"] in site.p2p_received:
+        if msg_hash in site.p2p_received:
             self.response({
                 "warning": "Already received, thanks"
             })
             return False, ""
-        site.p2p_received.append(params["hash"])
+        site.p2p_received.append(msg_hash)
 
         # Check whether the message matches passive filter
         if not SafeRe.match(content_json["p2p_filter"], json.dumps(raw["message"])):
@@ -171,7 +175,7 @@ class FileRequestPlugin(object):
         # Verify signature
         if params["signature"]:
             signature_address, signature = params["signature"].split("|")
-            what = "%s|%s|%s" % (signature_address, params["hash"], params["raw"])
+            what = "%s|%s|%s" % (signature_address, msg_hash, params["raw"])
             from Crypt import CryptBitcoin
             if not CryptBitcoin.verify(what, signature_address, signature):
                 self.connection.log("Invalid signature")

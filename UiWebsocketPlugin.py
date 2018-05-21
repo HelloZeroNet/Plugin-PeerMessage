@@ -51,7 +51,7 @@ class UiWebsocketPlugin(object):
             "site": self.site.address
         }
 
-        all_message = self.peerGenerateMessage(all_message, privatekey)
+        all_message, msg_hash = self.peerGenerateMessage(all_message, privatekey)
 
         peers = self.site.getConnectedPeers()
         if len(peers) < peer_count:  # Add more, non-connected peers if necessary
@@ -63,13 +63,13 @@ class UiWebsocketPlugin(object):
             jobs.append(gevent.spawn(self.p2pBroadcast, peer, all_message))
 
         # Send message to myself
-        self.site.p2p_received.append(all_message["hash"])
+        self.site.p2p_received.append(msg_hash)
 
         websockets = [ws for ws in self.site.websockets if "peerReceive" in ws.channels]
         for ws in websockets:
             ws.cmd("peerReceive", {
                 "ip": "self",
-                "hash": all_message["hash"],
+                "hash": msg_hash,
                 "message": message,
                 "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else ""
             })
@@ -77,7 +77,7 @@ class UiWebsocketPlugin(object):
         if not websockets and immediate:
             self.site.p2p_unread.append({
                 "ip": "self",
-                "hash": all_message["hash"],
+                "hash": msg_hash,
                 "message": message,
                 "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else ""
             })
@@ -137,14 +137,14 @@ class UiWebsocketPlugin(object):
         if to:
             all_message["to"] = to
 
-        all_message = self.peerGenerateMessage(all_message, privatekey)
+        all_message, msg_hash = self.peerGenerateMessage(all_message, privatekey)
 
         # Send message
-        self.site.p2p_to[all_message["hash"]] = gevent.event.AsyncResult()
+        self.site.p2p_to[msg_hash] = gevent.event.AsyncResult()
         peer.request("peerSend", all_message)
 
         # Get reply
-        reply = self.site.p2p_to[all_message["hash"]].get()
+        reply = self.site.p2p_to[msg_hash].get()
         self.response(to_, reply)
 
 
@@ -184,8 +184,8 @@ class UiWebsocketPlugin(object):
         return {
             "raw": all_message,
             "signature": signature,
-            "hash": msg_hash
-        }
+            "nonce": nonce
+        }, msg_hash
 
 
     def peerCheckMessage(self, to, message):
