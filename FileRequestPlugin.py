@@ -19,6 +19,11 @@ class FileRequestPlugin(object):
         if not res:
             return
 
+        self.response({
+            "ok": "thx"
+        })
+
+
         site = self.sites.get(raw["site"])
         websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
         if websockets:
@@ -35,10 +40,6 @@ class FileRequestPlugin(object):
                 "signed_by": signature_address
             })
 
-
-        self.response({
-            "ok": "thx"
-        })
 
         # Maybe active filter will reply?
         if websockets:
