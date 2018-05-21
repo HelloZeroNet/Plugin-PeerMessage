@@ -15,7 +15,7 @@ class FileRequestPlugin(object):
 
         raw = json.loads(params["raw"])
 
-        res, signature_address = self.peerCheckMessage()
+        res, signature_address = self.peerCheckMessage(raw)
         if not res:
             return
 
@@ -78,7 +78,7 @@ class FileRequestPlugin(object):
         raw = json.loads(params["raw"])
 
 
-        res, signature_address = self.peerCheckMessage()
+        res, signature_address = self.peerCheckMessage(raw)
         if not res:
             return
 
@@ -126,6 +126,7 @@ class FileRequestPlugin(object):
         site = self.sites.get(raw["site"])
         content_json = site.storage.loadJson("content.json")
         if "p2p_filter" not in content_json:
+            print "Site %s doesn't support P2P messages" % raw["site"]
             self.connection.log("Site %s doesn't support P2P messages" % raw["site"])
             self.connection.badAction(5)
             self.response({
@@ -135,6 +136,7 @@ class FileRequestPlugin(object):
 
         # Was the message received yet?
         if params["hash"] in site.p2p_received:
+            print "Already received, thanks"
             self.response({
                 "warning": "Already received, thanks"
             })
@@ -143,6 +145,7 @@ class FileRequestPlugin(object):
 
         # Check whether the message matches passive filter
         if not SafeRe.match(content_json["p2p_filter"], json.dumps(raw["message"])):
+            print "Invalid message for site %s: %s" % (raw["site"], raw["message"])
             self.connection.log("Invalid message for site %s: %s" % (raw["site"], raw["message"]))
             self.connection.badAction(5)
             self.response({
@@ -152,6 +155,7 @@ class FileRequestPlugin(object):
 
         # Not so fast
         if "p2p_freq_limit" in content_json and time.time() - site.p2p_last_recv.get(ip, 0) < content_json["p2p_freq_limit"]:
+            print "Too fast messages from %s" % raw["site"]
             self.connection.log("Too fast messages from %s" % raw["site"])
             self.connection.badAction(2)
             self.response({
@@ -162,6 +166,7 @@ class FileRequestPlugin(object):
 
         # Not so much
         if "p2p_size_limit" in content_json and len(json.dumps(raw["message"])) > content_json["p2p_size_limit"]:
+            print "Too big message from %s" % raw["site"]
             self.connection.log("Too big message from %s" % raw["site"])
             self.connection.badAction(7)
             self.response({
@@ -175,6 +180,7 @@ class FileRequestPlugin(object):
             what = "%s|%s|%s" % (signature_address, params["hash"], params["raw"])
             from Crypt import CryptBitcoin
             if not CryptBitcoin.verify(what, signature_address, signature):
+                print "Invalid signature"
                 self.connection.log("Invalid signature")
                 self.connection.badAction(7)
                 self.response({
@@ -188,6 +194,7 @@ class FileRequestPlugin(object):
         if "p2p_signed_only" in content_json:
             valid = content_json["p2p_signed_only"]
             if valid is True and not signature_address:
+                print "Not signed message"
                 self.connection.log("Not signed message")
                 self.connection.badAction(5)
                 self.response({
@@ -195,6 +202,7 @@ class FileRequestPlugin(object):
                 })
                 return False, ""
             elif isinstance(valid, str) and signature_address != valid:
+                print "Message signature is invalid: %s not in [%r]" % (signature_address, valid)
                 self.connection.log("Message signature is invalid: %s not in [%r]" % (signature_address, valid))
                 self.connection.badAction(5)
                 self.response({
@@ -202,6 +210,7 @@ class FileRequestPlugin(object):
                 })
                 return False, ""
             elif isinstance(valid, list) and signature_address not in valid:
+                print "Message signature is invalid: %s not in %r" % (signature_address, valid)
                 self.connection.log("Message signature is invalid: %s not in %r" % (signature_address, valid))
                 self.connection.badAction(5)
                 self.response({
@@ -209,4 +218,5 @@ class FileRequestPlugin(object):
                 })
                 return False, ""
 
+        print "ok"
         return True, signature_address
