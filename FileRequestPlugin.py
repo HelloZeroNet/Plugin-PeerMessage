@@ -97,8 +97,6 @@ class FileRequestPlugin(object):
             })
         else:
             # Broadcast
-            site.p2p_reply[params["hash"]] = gevent.event.AsyncResult()
-
             websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
             if websockets:
                 # Wait for result (valid/invalid)
