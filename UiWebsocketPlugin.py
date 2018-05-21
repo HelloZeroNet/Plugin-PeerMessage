@@ -154,6 +154,7 @@ class UiWebsocketPlugin(object):
 
         # Get reply
         reply = self.site.p2p_to[all_message["hash"]].get()
+        print "Got a reply to %s: %s" % (all_message["hash"], reply)
         self.response(to_, reply)
 
 
