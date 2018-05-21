@@ -109,6 +109,8 @@ class FileRequestPlugin(object):
             # Wait for result (valid/invalid)
             site.p2p_result[params["hash"]] = gevent.event.AsyncResult()
 
+        site.p2p_reply[params["hash"]] = gevent.event.AsyncResult()
+
         # Send to WebSocket
         for ws in websockets:
             ws.cmd("peerReceive", {
@@ -154,7 +156,7 @@ class FileRequestPlugin(object):
 
         if websockets and not raw["broadcast"]:
             # Make sense to wait for the result from some websocket
-            reply = gevent.spawn(self.p2pWaitReply, site, params["hash"]).get(8)
+            reply = site.p2p_reply[params["hash"]].get(timeout=8)
             del site.p2p_reply[params["hash"]]
             print "Reply %r (%s)" % (reply, raw["message"])
             self.response({
@@ -253,6 +255,8 @@ class FileRequestPlugin(object):
                 return
 
 
+        site.p2p_reply[params["hash"]] = gevent.event.AsyncResult()
+
         websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
         for ws in websockets:
             ws.cmd("peerReceive", {
@@ -264,7 +268,7 @@ class FileRequestPlugin(object):
 
         # Ask WebSocket for response
         if websockets:
-            reply = gevent.spawn(self.p2pWaitReply, site, params["hash"]).get(8)
+            reply = site.p2p_reply[params["hash"]].get(timeout=8)
             print "Replied to (send) %s: %s" % (raw, reply)
             if reply is not None:
                 self.response({
@@ -278,11 +282,3 @@ class FileRequestPlugin(object):
         self.response({
             "ok": "Received"
         })
-
-
-
-
-    def p2pWaitReply(self, site, hash):
-        while hash not in site.p2p_reply:
-            gevent.sleep(0.5)
-        return site.p2p_reply[hash]
