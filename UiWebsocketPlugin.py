@@ -195,21 +195,27 @@ class UiWebsocketPlugin(object):
         # Check whether P2P messages are supported
         content_json = self.site.storage.loadJson("content.json")
         if "p2p_filter" not in content_json:
+            print "Site %s doesn't support P2P messages" % self.site.address
             self.response(to, {"error": "Site %s doesn't support P2P messages" % self.site.address})
-            return
+            return False
 
         # Check whether the message matches passive filter
         if not SafeRe.match(content_json["p2p_filter"], json.dumps(message)):
+            print "Invalid message for site %s: %s" % (self.site.address, message)
             self.response(to, {"error": "Invalid message for site %s: %s" % (self.site.address, message)})
-            return
+            return False
 
         # Not so fast
         if "p2p_freq_limit" in content_json and time.time() - self.site.p2p_last_recv.get("self", 0) < content_json["p2p_freq_limit"]:
+            print "Too fast messages"
             self.response(to, {"error": "Too fast messages"})
-            return
+            return False
         self.site.p2p_last_recv["self"] = time.time()
 
         # Not so much
         if "p2p_size_limit" in content_json and len(json.dumps(message)) > content_json["p2p_size_limit"]:
+            print "Too big message"
             self.response(to, {"error": "Too big message"})
-            return
+            return False
+
+        return True
