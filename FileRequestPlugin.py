@@ -31,7 +31,6 @@ class FileRequestPlugin(object):
         if websockets:
             # Wait for result (valid/invalid)
             site.p2p_result[params["hash"]] = gevent.event.AsyncResult()
-            print "Create result %s" % params["hash"]
 
         # Send to WebSocket
         for ws in websockets:
@@ -47,7 +46,6 @@ class FileRequestPlugin(object):
         if websockets:
             # Wait for p2p_result
             result = site.p2p_result[params["hash"]].get()
-            print "Delete result %s" % params["hash"]
             del site.p2p_result[params["hash"]]
             if not result:
                 self.connection.badAction(10)
@@ -106,7 +104,6 @@ class FileRequestPlugin(object):
             if websockets:
                 # Wait for result (valid/invalid)
                 site.p2p_result[params["hash"]] = gevent.event.AsyncResult()
-                print "Create result %s" % params["hash"]
 
             for ws in websockets:
                 ws.cmd("peerReceive", {
@@ -120,7 +117,6 @@ class FileRequestPlugin(object):
             if websockets:
                 # Wait for p2p_result
                 result = site.p2p_result[params["hash"]].get()
-                print "Delete result %s" % params["hash"]
                 del site.p2p_result[params["hash"]]
                 if not result:
                     self.connection.badAction(10)
