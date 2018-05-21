@@ -15,94 +15,8 @@ class FileRequestPlugin(object):
 
         raw = json.loads(params["raw"])
 
-        # Check whether P2P messages are supported
-        site = self.sites.get(raw["site"])
-        content_json = site.storage.loadJson("content.json")
-        if "p2p_filter" not in content_json:
-            self.connection.log("Site %s doesn't support P2P messages" % raw["site"])
-            self.connection.badAction(5)
-            self.response({
-                "error": "Site %s doesn't support P2P messages" % raw["site"]
-            })
+        if not self.peerCheckMessage():
             return
-
-        # Was the message received yet?
-        if params["hash"] in site.p2p_received:
-            self.response({
-                "warning": "Already received, thanks"
-            })
-            return
-        site.p2p_received.append(params["hash"])
-
-
-        # Check whether the message matches passive filter
-        if not SafeRe.match(content_json["p2p_filter"], json.dumps(raw["message"])):
-            self.connection.log("Invalid message for site %s: %s" % (raw["site"], raw["message"]))
-            self.connection.badAction(5)
-            self.response({
-                "error": "Invalid message for site %s: %s" % (raw["site"], raw["message"])
-            })
-            return
-
-        # Not so fast
-        if "p2p_freq_limit" in content_json and time.time() - site.p2p_last_recv.get(ip, 0) < content_json["p2p_freq_limit"]:
-            self.connection.log("Too fast messages from %s" % raw["site"])
-            self.connection.badAction(2)
-            self.response({
-                "error": "Too fast messages from %s" % raw["site"]
-            })
-            return
-        site.p2p_last_recv[ip] = time.time()
-
-        # Not so much
-        if "p2p_size_limit" in content_json and len(json.dumps(raw["message"])) > content_json["p2p_size_limit"]:
-            self.connection.log("Too big message from %s" % raw["site"])
-            self.connection.badAction(7)
-            self.response({
-                "error": "Too big message from %s" % raw["site"]
-            })
-            return
-
-        # Verify signature
-        if params["signature"]:
-            signature_address, signature = params["signature"].split("|")
-            what = "%s|%s|%s" % (signature_address, params["hash"], params["raw"])
-            from Crypt import CryptBitcoin
-            if not CryptBitcoin.verify(what, signature_address, signature):
-                self.connection.log("Invalid signature")
-                self.connection.badAction(7)
-                self.response({
-                    "error": "Invalid signature"
-                })
-                return
-        else:
-            signature_address = ""
-
-        # Check that the signature address is correct
-        if "p2p_signed_only" in content_json:
-            valid = content_json["p2p_signed_only"]
-            if valid is True and not signature_address:
-                self.connection.log("Not signed message")
-                self.connection.badAction(5)
-                self.response({
-                    "error": "Not signed message"
-                })
-                return
-            elif isinstance(valid, str) and signature_address != valid:
-                self.connection.log("Message signature is invalid: %s not in [%r]" % (signature_address, valid))
-                self.connection.badAction(5)
-                self.response({
-                    "error": "Message signature is invalid: %s not in [%r]" % (signature_address, valid)
-                })
-                return
-            elif isinstance(valid, list) and signature_address not in valid:
-                self.connection.log("Message signature is invalid: %s not in %r" % (signature_address, valid))
-                self.connection.badAction(5)
-                self.response({
-                    "error": "Message signature is invalid: %s not in %r" % (signature_address, valid)
-                })
-                return
-
 
         websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
         if websockets:
@@ -174,86 +88,9 @@ class FileRequestPlugin(object):
         ip = "%s:%s" % (self.connection.ip, self.connection.port)
         raw = json.loads(params["raw"])
 
-        # Check whether P2P messages are supported
-        site = self.sites.get(raw["site"])
-        content_json = site.storage.loadJson("content.json")
-        if "p2p_filter" not in content_json:
-            self.connection.log("Site %s doesn't support P2P messages" % raw["site"])
-            self.connection.badAction(5)
-            self.response({
-                "error": "Site %s doesn't support P2P messages" % raw["site"]
-            })
+
+        if not self.peerCheckMessage():
             return
-
-
-        # Check whether the message matches passive filter
-        if not SafeRe.match(content_json["p2p_filter"], json.dumps(raw["message"])):
-            self.connection.log("Invalid message for site %s: %s" % (raw["site"], raw["message"]))
-            self.connection.badAction(5)
-            self.response({
-                "error": "Invalid message for site %s: %s" % (raw["site"], raw["message"])
-            })
-            return
-
-        # Not so fast
-        if "p2p_freq_limit" in content_json and time.time() - site.p2p_last_recv.get(ip, 0) < content_json["p2p_freq_limit"]:
-            self.connection.log("Too fast messages from %s" % raw["site"])
-            self.connection.badAction(2)
-            self.response({
-                "error": "Too fast messages from %s" % raw["site"]
-            })
-            return
-        site.p2p_last_recv[ip] = time.time()
-
-        # Not so much
-        if "p2p_size_limit" in content_json and len(json.dumps(raw["message"])) > content_json["p2p_size_limit"]:
-            self.connection.log("Too big message from %s" % raw["site"])
-            self.connection.badAction(7)
-            self.response({
-                "error": "Too big message from %s" % raw["site"]
-            })
-            return
-
-        # Verify signature
-        if params["signature"]:
-            signature_address, signature = params["signature"].split("|")
-            what = "%s|%s|%s" % (signature_address, params["hash"], params["raw"])
-            from Crypt import CryptBitcoin
-            if not CryptBitcoin.verify(what, signature_address, signature):
-                self.connection.log("Invalid signature")
-                self.connection.badAction(7)
-                self.response({
-                    "error": "Invalid signature"
-                })
-                return
-        else:
-            signature_address = ""
-
-        # Check that the signature address is correct
-        if "p2p_signed_only" in content_json:
-            valid = content_json["p2p_signed_only"]
-            if valid is True and not signature_address:
-                self.connection.log("Not signed message")
-                self.connection.badAction(5)
-                self.response({
-                    "error": "Not signed message"
-                })
-                return
-            elif isinstance(valid, str) and signature_address != valid:
-                self.connection.log("Message signature is invalid: %s not in [%r]" % (signature_address, valid))
-                self.connection.badAction(5)
-                self.response({
-                    "error": "Message signature is invalid: %s not in [%r]" % (signature_address, valid)
-                })
-                return
-            elif isinstance(valid, list) and signature_address not in valid:
-                self.connection.log("Message signature is invalid: %s not in %r" % (signature_address, valid))
-                self.connection.badAction(5)
-                self.response({
-                    "error": "Message signature is invalid: %s not in %r" % (signature_address, valid)
-                })
-                return
-
 
         site.p2p_reply[params["hash"]] = gevent.event.AsyncResult()
 
@@ -282,3 +119,94 @@ class FileRequestPlugin(object):
         self.response({
             "ok": "Received"
         })
+
+
+    def peerCheckMessage(self, raw):
+        # Check whether P2P messages are supported
+        site = self.sites.get(raw["site"])
+        content_json = site.storage.loadJson("content.json")
+        if "p2p_filter" not in content_json:
+            self.connection.log("Site %s doesn't support P2P messages" % raw["site"])
+            self.connection.badAction(5)
+            self.response({
+                "error": "Site %s doesn't support P2P messages" % raw["site"]
+            })
+            return False
+
+        # Was the message received yet?
+        if params["hash"] in site.p2p_received:
+            self.response({
+                "warning": "Already received, thanks"
+            })
+            return False
+        site.p2p_received.append(params["hash"])
+
+        # Check whether the message matches passive filter
+        if not SafeRe.match(content_json["p2p_filter"], json.dumps(raw["message"])):
+            self.connection.log("Invalid message for site %s: %s" % (raw["site"], raw["message"]))
+            self.connection.badAction(5)
+            self.response({
+                "error": "Invalid message for site %s: %s" % (raw["site"], raw["message"])
+            })
+            return False
+
+        # Not so fast
+        if "p2p_freq_limit" in content_json and time.time() - site.p2p_last_recv.get(ip, 0) < content_json["p2p_freq_limit"]:
+            self.connection.log("Too fast messages from %s" % raw["site"])
+            self.connection.badAction(2)
+            self.response({
+                "error": "Too fast messages from %s" % raw["site"]
+            })
+            return False
+        site.p2p_last_recv[ip] = time.time()
+
+        # Not so much
+        if "p2p_size_limit" in content_json and len(json.dumps(raw["message"])) > content_json["p2p_size_limit"]:
+            self.connection.log("Too big message from %s" % raw["site"])
+            self.connection.badAction(7)
+            self.response({
+                "error": "Too big message from %s" % raw["site"]
+            })
+            return False
+
+        # Verify signature
+        if params["signature"]:
+            signature_address, signature = params["signature"].split("|")
+            what = "%s|%s|%s" % (signature_address, params["hash"], params["raw"])
+            from Crypt import CryptBitcoin
+            if not CryptBitcoin.verify(what, signature_address, signature):
+                self.connection.log("Invalid signature")
+                self.connection.badAction(7)
+                self.response({
+                    "error": "Invalid signature"
+                })
+                return False
+        else:
+            signature_address = ""
+
+        # Check that the signature address is correct
+        if "p2p_signed_only" in content_json:
+            valid = content_json["p2p_signed_only"]
+            if valid is True and not signature_address:
+                self.connection.log("Not signed message")
+                self.connection.badAction(5)
+                self.response({
+                    "error": "Not signed message"
+                })
+                return False
+            elif isinstance(valid, str) and signature_address != valid:
+                self.connection.log("Message signature is invalid: %s not in [%r]" % (signature_address, valid))
+                self.connection.badAction(5)
+                self.response({
+                    "error": "Message signature is invalid: %s not in [%r]" % (signature_address, valid)
+                })
+                return False
+            elif isinstance(valid, list) and signature_address not in valid:
+                self.connection.log("Message signature is invalid: %s not in %r" % (signature_address, valid))
+                self.connection.badAction(5)
+                self.response({
+                    "error": "Message signature is invalid: %s not in %r" % (signature_address, valid)
+                })
+                return False
+
+        return True
