@@ -37,26 +37,9 @@ class UiWebsocketPlugin(object):
     # Broadcast message to other peers
     def actionPeerBroadcast(self, to, message, privatekey=None, peer_count=5, broadcast=True, immediate=False, timeout=60):
         print "peerBroadcast(%r)" % message
-        # Check whether P2P messages are supported
-        content_json = self.site.storage.loadJson("content.json")
-        if "p2p_filter" not in content_json:
-            self.response(to, {"error": "Site %s doesn't support P2P messages" % self.site.address})
-            return
 
-        # Check whether the message matches passive filter
-        if not SafeRe.match(content_json["p2p_filter"], json.dumps(message)):
-            self.response(to, {"error": "Invalid message for site %s: %s" % (self.site.address, message)})
-            return
-
-        # Not so fast
-        if "p2p_freq_limit" in content_json and time.time() - self.site.p2p_last_recv.get("self", 0) < content_json["p2p_freq_limit"]:
-            self.response(to, {"error": "Too fast messages"})
-            return
-        self.site.p2p_last_recv["self"] = time.time()
-
-        # Not so much
-        if "p2p_size_limit" in content_json and len(json.dumps(message)) > content_json["p2p_size_limit"]:
-            self.response(to, {"error": "Too big message"})
+        # Check message
+        if not self.peerCheckMessage(message):
             return
 
 
@@ -68,16 +51,8 @@ class UiWebsocketPlugin(object):
             "immediate": immediate,
             "site": self.site.address
         }
-        all_message = json.dumps(all_message)
 
-        nonce = str(random.randint(0, 1000000000))
-        msg_hash = hashlib.md5("%s,%s" % (nonce, all_message)).hexdigest()
-        signature = self.p2pGetSignature(msg_hash, all_message, privatekey)
-        all_message = {
-            "raw": all_message,
-            "signature": signature,
-            "hash": msg_hash
-        }
+        all_message = self.peerGenerateMessage(all_message, privatekey)
 
         peers = self.site.getConnectedPeers()
         if len(peers) < peer_count:  # Add more, non-connected peers if necessary
@@ -89,13 +64,13 @@ class UiWebsocketPlugin(object):
             jobs.append(gevent.spawn(self.p2pBroadcast, peer, all_message))
 
         # Send message to myself
-        self.site.p2p_received.append(msg_hash)
+        self.site.p2p_received.append(all_message["hash"])
 
         websockets = [ws for ws in self.site.websockets if "peerReceive" in ws.channels]
         for ws in websockets:
             ws.cmd("peerReceive", {
                 "ip": "self",
-                "hash": msg_hash,
+                "hash": all_message["hash"],
                 "message": message,
                 "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else ""
             })
@@ -103,7 +78,7 @@ class UiWebsocketPlugin(object):
         if not websockets and immediate:
             self.site.p2p_unread.append({
                 "ip": "self",
-                "hash": msg_hash,
+                "hash": all_message["hash"],
                 "message": message,
                 "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else ""
             })
@@ -138,6 +113,12 @@ class UiWebsocketPlugin(object):
     # Send a message to IP
     def actionPeerSend(self, to, ip, message, privatekey=None):
         print "peerSend(%r, %r)" % (ip, message)
+
+        # Check message
+        if not self.peerCheckMessage(message):
+            return
+
+
         # Get peer or connect to it if it isn't cached
         peer = self.site.peers.get(ip)
         if not peer:
@@ -153,28 +134,17 @@ class UiWebsocketPlugin(object):
         print "Use peer %r" % peer
 
         # Generate hash
-        nonce = str(random.randint(0, 1000000000))
-        all_message = json.dumps({
+        all_message = {
             "message": message,
             "site": self.site.address
-        })
-        msg_hash = hashlib.md5("%s,%s" % (nonce, all_message)).hexdigest()
-
-        # Add singature
-        signature = self.p2pGetSignature(msg_hash, all_message, privatekey)
-
-        print "Send %r" % {
-            "raw": all_message,
-            "signature": signature,
-            "hash": msg_hash
         }
 
+        all_message = self.peerGenerateMessage(all_message, privatekey)
 
-        reply = peer.request("peerSend", {
-            "raw": all_message,
-            "signature": signature,
-            "hash": msg_hash
-        })
+        print "Send %r" % all_message
+
+
+        reply = peer.request("peerSend", all_message)
         if "reply" in reply:
             print "Replied: %r" % reply
             self.response(to, reply["reply"])
@@ -209,3 +179,40 @@ class UiWebsocketPlugin(object):
     def actionPeerReply(self, to, hash, reply):
         print "Replied to %s with %s" % (hash, reply)
         self.site.p2p_reply[hash].set(reply)
+
+
+
+    def peerGenerateMessage(self, all_message, privatekey=None):
+        all_message = json.dumps(all_message)
+        nonce = str(random.randint(0, 1000000000))
+        msg_hash = hashlib.md5("%s,%s" % (nonce, all_message)).hexdigest()
+        signature = self.p2pGetSignature(msg_hash, all_message, privatekey)
+        return {
+            "raw": all_message,
+            "signature": signature,
+            "hash": msg_hash
+        }
+
+
+    def peerCheckMessage(self, message):
+        # Check whether P2P messages are supported
+        content_json = self.site.storage.loadJson("content.json")
+        if "p2p_filter" not in content_json:
+            self.response(to, {"error": "Site %s doesn't support P2P messages" % self.site.address})
+            return
+
+        # Check whether the message matches passive filter
+        if not SafeRe.match(content_json["p2p_filter"], json.dumps(message)):
+            self.response(to, {"error": "Invalid message for site %s: %s" % (self.site.address, message)})
+            return
+
+        # Not so fast
+        if "p2p_freq_limit" in content_json and time.time() - self.site.p2p_last_recv.get("self", 0) < content_json["p2p_freq_limit"]:
+            self.response(to, {"error": "Too fast messages"})
+            return
+        self.site.p2p_last_recv["self"] = time.time()
+
+        # Not so much
+        if "p2p_size_limit" in content_json and len(json.dumps(message)) > content_json["p2p_size_limit"]:
+            self.response(to, {"error": "Too big message"})
+            return
