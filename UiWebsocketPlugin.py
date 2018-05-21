@@ -35,7 +35,9 @@ class UiWebsocketPlugin(object):
 
 
     # Broadcast message to other peers
-    def actionPeerBroadcast(self, to, message, privatekey=None, peer_count=5, broadcast=True, immediate=False, timeout=60):
+    def actionPeerBroadcast(self, *args, **kwargs):
+        gevent.spawn(self.handlePeerBroadcast, *args, **kwargs)
+    def handlePeerBroadcast(self, to, message, privatekey=None, peer_count=5, broadcast=True, immediate=False, timeout=60):
         print "peerBroadcast(%r)" % message
 
         # Check message
@@ -110,7 +112,9 @@ class UiWebsocketPlugin(object):
         }
 
     # Send a message to IP
-    def actionPeerSend(self, to_, ip, message, privatekey=None, to=None):
+    def actionPeerSend(self, *args, **kwargs):
+        gevent.spawn(self.handlePeerSend, *args, **kwargs)
+    def handlePeerSend(self, to_, ip, message, privatekey=None, to=None):
         print "peerSend(%r, %r, to=%r)" % (ip, message, to)
 
         # Check message

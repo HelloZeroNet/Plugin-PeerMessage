@@ -10,6 +10,8 @@ import gevent
 class FileRequestPlugin(object):
     # Re-broadcast to neighbour peers
     def actionPeerBroadcast(self, params):
+        gevent.spawn(self.handlePeerBroadcast, params)
+    def handlePeerBroadcast(self, params):
         print "Got peerBroadcast: %r" % params
         ip = "%s:%s" % (self.connection.ip, self.connection.port)
 
@@ -75,6 +77,8 @@ class FileRequestPlugin(object):
 
     # Receive by-ip messages
     def actionPeerSend(self, params):
+        gevent.spawn(self.handlePeerSend, params)
+    def handlePeerSend(self, params):
         print "Got peerSend: %r" % params
         ip = "%s:%s" % (self.connection.ip, self.connection.port)
         raw = json.loads(params["raw"])
