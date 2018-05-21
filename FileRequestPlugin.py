@@ -151,12 +151,14 @@ class FileRequestPlugin(object):
 
         if websockets and not raw["broadcast"]:
             # Make sense to wait for the result from some websocket
-            reply = gevent.spawn(self.p2pWaitReply, site, params["hash"]).get()
+            reply = gevent.spawn(self.p2pWaitReply, site, params["hash"]).get(8)
             del site.p2p_reply[params["hash"]]
+            print "Reply %r (%s)" % (reply, raw["message"])
             self.response({
                 "reply": reply
             })
         else:
+            print "Reply [None] (%s)" % raw["message"]
             self.response({
                 "reply": None
             })
@@ -260,6 +262,7 @@ class FileRequestPlugin(object):
         # Ask WebSocket for response
         if websockets:
             reply = gevent.spawn(self.p2pWaitReply, site, params["hash"]).get(8)
+            print "Replied to (send) %s: %s" % (raw, reply)
             if reply is not None:
                 self.response({
                     "ok": "Replied",
@@ -268,6 +271,7 @@ class FileRequestPlugin(object):
                 return
 
         # Couldn't get response, just reply success
+        print "Didn't reply to (send) %s" % raw
         self.response({
             "ok": "Received"
         })

@@ -204,4 +204,5 @@ class UiWebsocketPlugin(object):
         self.site.p2p_result[hash] = True
 
     def actionPeerReply(self, to, hash, reply):
+        print "Replied to %s with %s" % (hash, reply)
         self.site.p2p_reply[hash] = reply
