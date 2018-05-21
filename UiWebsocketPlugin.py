@@ -175,8 +175,11 @@ class UiWebsocketPlugin(object):
             "signature": signature,
             "hash": msg_hash
         })
-        print "Replied: %r" % reply
-        self.response(to, reply)
+        if "reply" in reply:
+            print "Replied: %r" % reply
+            self.response(to, reply["reply"])
+        else:
+            print "Received"
 
 
 
