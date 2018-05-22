@@ -134,14 +134,14 @@ class FileRequestPlugin(object):
             self.response({
                 "error": "Site %s doesn't support P2P messages" % raw["site"]
             })
-            return False, ""
+            return False, "", msg_hash
 
         # Was the message received yet?
         if msg_hash in site.p2p_received:
             self.response({
                 "warning": "Already received, thanks"
             })
-            return False, ""
+            return False, "", msg_hash
         site.p2p_received.append(msg_hash)
 
         # Check whether the message matches passive filter
@@ -151,7 +151,7 @@ class FileRequestPlugin(object):
             self.response({
                 "error": "Invalid message for site %s: %s" % (raw["site"], raw["message"])
             })
-            return False, ""
+            return False, "", msg_hash
 
         # Not so fast
         if "p2p_freq_limit" in content_json and time.time() - site.p2p_last_recv.get(ip, 0) < content_json["p2p_freq_limit"]:
@@ -160,7 +160,7 @@ class FileRequestPlugin(object):
             self.response({
                 "error": "Too fast messages from %s" % raw["site"]
             })
-            return False, ""
+            return False, "", msg_hash
         site.p2p_last_recv[ip] = time.time()
 
         # Not so much
@@ -170,7 +170,7 @@ class FileRequestPlugin(object):
             self.response({
                 "error": "Too big message from %s" % raw["site"]
             })
-            return False, ""
+            return False, "", msg_hash
 
         # Verify signature
         if params["signature"]:
@@ -183,7 +183,7 @@ class FileRequestPlugin(object):
                 self.response({
                     "error": "Invalid signature"
                 })
-                return False, ""
+                return False, "", msg_hash
         else:
             signature_address = ""
 
@@ -196,20 +196,20 @@ class FileRequestPlugin(object):
                 self.response({
                     "error": "Not signed message"
                 })
-                return False, ""
+                return False, "", msg_hash
             elif isinstance(valid, str) and signature_address != valid:
                 self.connection.log("Message signature is invalid: %s not in [%r]" % (signature_address, valid))
                 self.connection.badAction(5)
                 self.response({
                     "error": "Message signature is invalid: %s not in [%r]" % (signature_address, valid)
                 })
-                return False, ""
+                return False, "", msg_hash
             elif isinstance(valid, list) and signature_address not in valid:
                 self.connection.log("Message signature is invalid: %s not in %r" % (signature_address, valid))
                 self.connection.badAction(5)
                 self.response({
                     "error": "Message signature is invalid: %s not in %r" % (signature_address, valid)
                 })
-                return False, ""
+                return False, "", msg_hash
 
-        return True, signature_address
+        return True, signature_address, msg_hash
