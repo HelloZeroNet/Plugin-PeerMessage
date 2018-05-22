@@ -31,7 +31,7 @@ class UiWebsocketPlugin(object):
         if super(UiWebsocketPlugin, self).hasSitePermission(address, cmd=cmd):
             return True
 
-        return cmd == "peerBroadcast"
+        return cmd in ("peerBroadcast", "peerSend")
 
 
     # Broadcast message to other peers
