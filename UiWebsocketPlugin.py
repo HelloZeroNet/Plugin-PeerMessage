@@ -71,7 +71,8 @@ class UiWebsocketPlugin(object):
                 "ip": "self",
                 "hash": msg_hash,
                 "message": message,
-                "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else ""
+                "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
+                "broadcast": True
             })
 
         if not websockets and immediate:
@@ -79,7 +80,8 @@ class UiWebsocketPlugin(object):
                 "ip": "self",
                 "hash": msg_hash,
                 "message": message,
-                "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else ""
+                "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
+                "broadcast": True
             })
 
 

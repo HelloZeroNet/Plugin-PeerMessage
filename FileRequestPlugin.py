@@ -38,7 +38,8 @@ class FileRequestPlugin(object):
                 "ip": ip,
                 "hash": msg_hash,
                 "message": raw["message"],
-                "signed_by": signature_address
+                "signed_by": signature_address,
+                "broadcast": True
             })
 
 
@@ -109,7 +110,8 @@ class FileRequestPlugin(object):
                     "ip": ip,
                     "hash": msg_hash,
                     "message": raw["message"],
-                    "signed_by": signature_address
+                    "signed_by": signature_address,
+                    "broadcast": False
                 })
 
             # Maybe active filter will reply?
