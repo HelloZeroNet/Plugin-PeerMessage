@@ -157,17 +157,24 @@ class UiWebsocketPlugin(object):
         if privatekey == "stored":
             # Using site privatekey
             privatekey = self.user.getSiteData(self.site.address).get("privatekey")
+            cert = None
         elif not privatekey and privatekey is not None:
             # Using user privatekey
             privatekey = self.user.getAuthPrivatekey(self.site.address)
+            cert = self.user.getCert(self.site.address)
+
+            if cert:
+                site_data = self.user.getSiteData(self.site.address, create=False)
+                cert_address = site_data["cert"]
+                cert = [cert["auth_type"], cert["auth_user_name"], cert_address, cert["cert_sign"]]
 
         # Generate signature
         if privatekey:
             from Crypt import CryptBitcoin
             address = CryptBitcoin.privatekeyToAddress(privatekey)
-            return "%s|%s" % (address, CryptBitcoin.sign("%s|%s|%s" % (address, hash, data), privatekey))
+            return "%s|%s" % (address, CryptBitcoin.sign("%s|%s|%s" % (address, hash, data), privatekey)), cert
         else:
-            return ""
+            return "", None
 
 
     def actionPeerInvalid(self, to, hash):
@@ -183,10 +190,11 @@ class UiWebsocketPlugin(object):
         all_message = json.dumps(all_message)
         nonce = str(random.randint(0, 1000000000))
         msg_hash = hashlib.sha256("%s,%s" % (nonce, all_message)).hexdigest()
-        signature = self.p2pGetSignature(msg_hash, all_message, privatekey)
+        signature, cert = self.p2pGetSignature(msg_hash, all_message, privatekey)
         return {
             "raw": all_message,
             "signature": signature,
+            "cert": cert,
             "nonce": nonce
         }, msg_hash
 
