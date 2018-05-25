@@ -14,14 +14,15 @@ class UiWebsocketPlugin(object):
         res = super(UiWebsocketPlugin, self).__init__(*args, **kwargs)
 
         # Automatically join peerReceive
-        content_json = self.site.storage.loadJson("content.json")
-        if "p2p_filter" in content_json:
-            self.channels.append("peerReceive")
+        if self.site.storage.isFile("p2p.json"):
+            p2p_json = self.site.storage.loadJson("p2p.json")
+            if "filter" in p2p_json:
+                self.channels.append("peerReceive")
 
-            # Flush immediate messages
-            for message in self.site.p2p_unread:
-                self.cmd("peerReceive", message)
-            self.site.p2p_unread = []
+                # Flush immediate messages
+                for message in self.site.p2p_unread:
+                    self.cmd("peerReceive", message)
+                self.site.p2p_unread = []
 
         return res
 
@@ -191,25 +192,30 @@ class UiWebsocketPlugin(object):
 
 
     def peerCheckMessage(self, to, message):
+        # Check whether there is p2p.json
+        if not self.site.storage.isFile("p2p.json"):
+            self.response(to, {"error": "Site %s doesn't support P2P messages" % self.site.address})
+            return False
+
         # Check whether P2P messages are supported
-        content_json = self.site.storage.loadJson("content.json")
-        if "p2p_filter" not in content_json:
+        p2p_json = self.site.storage.loadJson("p2p.json")
+        if "filter" not in p2p_json:
             self.response(to, {"error": "Site %s doesn't support P2P messages" % self.site.address})
             return False
 
         # Check whether the message matches passive filter
-        if not SafeRe.match(content_json["p2p_filter"], json.dumps(message)):
+        if not SafeRe.match(p2p_json["filter"], json.dumps(message)):
             self.response(to, {"error": "Invalid message for site %s: %s" % (self.site.address, message)})
             return False
 
         # Not so fast
-        if "p2p_freq_limit" in content_json and time.time() - self.site.p2p_last_recv.get("self", 0) < content_json["p2p_freq_limit"]:
+        if "freq_limit" in p2p_json and time.time() - self.site.p2p_last_recv.get("self", 0) < p2p_json["freq_limit"]:
             self.response(to, {"error": "Too fast messages"})
             return False
         self.site.p2p_last_recv["self"] = time.time()
 
         # Not so much
-        if "p2p_size_limit" in content_json and len(json.dumps(message)) > content_json["p2p_size_limit"]:
+        if "size_limit" in p2p_json and len(json.dumps(message)) > p2p_json["size_limit"]:
             self.response(to, {"error": "Too big message"})
             return False
 

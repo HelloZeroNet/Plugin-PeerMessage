@@ -127,10 +127,19 @@ class FileRequestPlugin(object):
         # Calculate hash from nonce
         msg_hash = hashlib.sha256("%s,%s" % (params["nonce"], params["raw"])).hexdigest()
 
-        # Check whether P2P messages are supported
+        # Check that p2p.json exists
         site = self.sites.get(raw["site"])
-        content_json = site.storage.loadJson("content.json")
-        if "p2p_filter" not in content_json:
+        if not site.storage.isFile("p2p.json"):
+            self.connection.log("Site %s doesn't support P2P messages" % raw["site"])
+            self.connection.badAction(5)
+            self.response({
+                "error": "Site %s doesn't support P2P messages" % raw["site"]
+            })
+            return
+
+        # Check whether P2P messages are supported
+        p2p_json = site.storage.loadJson("p2p.json")
+        if "filter" not in p2p_json:
             self.connection.log("Site %s doesn't support P2P messages" % raw["site"])
             self.connection.badAction(5)
             self.response({
@@ -147,7 +156,7 @@ class FileRequestPlugin(object):
         site.p2p_received.append(msg_hash)
 
         # Check whether the message matches passive filter
-        if not SafeRe.match(content_json["p2p_filter"], json.dumps(raw["message"])):
+        if not SafeRe.match(p2p_json["filter"], json.dumps(raw["message"])):
             self.connection.log("Invalid message for site %s: %s" % (raw["site"], raw["message"]))
             self.connection.badAction(5)
             self.response({
@@ -156,7 +165,7 @@ class FileRequestPlugin(object):
             return False, "", msg_hash
 
         # Not so fast
-        if "p2p_freq_limit" in content_json and time.time() - site.p2p_last_recv.get(ip, 0) < content_json["p2p_freq_limit"]:
+        if "freq_limit" in p2p_json and time.time() - site.p2p_last_recv.get(ip, 0) < p2p_json["freq_limit"]:
             self.connection.log("Too fast messages from %s" % raw["site"])
             self.connection.badAction(2)
             self.response({
@@ -166,7 +175,7 @@ class FileRequestPlugin(object):
         site.p2p_last_recv[ip] = time.time()
 
         # Not so much
-        if "p2p_size_limit" in content_json and len(json.dumps(raw["message"])) > content_json["p2p_size_limit"]:
+        if "size_limit" in p2p_json and len(json.dumps(raw["message"])) > p2p_json["size_limit"]:
             self.connection.log("Too big message from %s" % raw["site"])
             self.connection.badAction(7)
             self.response({
@@ -190,8 +199,8 @@ class FileRequestPlugin(object):
             signature_address = ""
 
         # Check that the signature address is correct
-        if "p2p_signed_only" in content_json:
-            valid = content_json["p2p_signed_only"]
+        if "signed_only" in p2p_json:
+            valid = p2p_json["signed_only"]
             if valid is True and not signature_address:
                 self.connection.log("Not signed message")
                 self.connection.badAction(5)
