@@ -135,7 +135,7 @@ class FileRequestPlugin(object):
             self.response({
                 "error": "Site %s doesn't support P2P messages" % raw["site"]
             })
-            return
+            return False, "", None, msg_hash
 
         # Check whether P2P messages are supported
         p2p_json = site.storage.loadJson("p2p.json")
@@ -145,14 +145,14 @@ class FileRequestPlugin(object):
             self.response({
                 "error": "Site %s doesn't support P2P messages" % raw["site"]
             })
-            return False, "", msg_hash
+            return False, "", None, msg_hash
 
         # Was the message received yet?
         if msg_hash in site.p2p_received:
             self.response({
                 "warning": "Already received, thanks"
             })
-            return False, "", msg_hash
+            return False, "", None, msg_hash
         site.p2p_received.append(msg_hash)
 
         # Check whether the message matches passive filter
@@ -162,7 +162,7 @@ class FileRequestPlugin(object):
             self.response({
                 "error": "Invalid message for site %s: %s" % (raw["site"], raw["message"])
             })
-            return False, "", msg_hash
+            return False, "", None, msg_hash
 
         # Not so fast
         if "freq_limit" in p2p_json and time.time() - site.p2p_last_recv.get(ip, 0) < p2p_json["freq_limit"]:
@@ -171,7 +171,7 @@ class FileRequestPlugin(object):
             self.response({
                 "error": "Too fast messages from %s" % raw["site"]
             })
-            return False, "", msg_hash
+            return False, "", None, msg_hash
         site.p2p_last_recv[ip] = time.time()
 
         # Not so much
@@ -181,7 +181,7 @@ class FileRequestPlugin(object):
             self.response({
                 "error": "Too big message from %s" % raw["site"]
             })
-            return False, "", msg_hash
+            return False, "", None, msg_hash
 
         # Verify signature
         if params["signature"]:
@@ -194,9 +194,33 @@ class FileRequestPlugin(object):
                 self.response({
                     "error": "Invalid signature"
                 })
-                return False, "", msg_hash
+                return False, "", None, msg_hash
+
+            # Now check auth providers
+            if params.get("cert"):
+                # Read all info
+                cert_auth_type, cert_auth_user_name, cert_issuer, cert_sign = params["cert"]
+                # This is what certificate issuer signs
+                cert_subject = "%s#%s/%s" % (signature_address, cert_auth_type, cert_auth_user_name)
+                # Now get cert issuer address
+                cert_signers = p2p_json.get("cert_signers", {})
+                cert_addresses = cert_signers.get(cert_issuer, [])
+                # And verify it
+                if not CryptBitcoin.verify(cert_subject, cert_addresses, cert_sign):
+                    self.connection.log("Invalid signature certificate")
+                    self.connection.badAction(7)
+                    self.response({
+                        "error": "Invalid signature certificate"
+                    })
+                    return False, "", None, msg_hash
+                # And save the ID
+                cert = "%s/%s@%s" % (cert_auth_type, cert_auth_user_name, cert_issuer)
+            else:
+                # Old-style sign
+                cert = ""
         else:
             signature_address = ""
+            cert = ""
 
         # Check that the signature address is correct
         if "signed_only" in p2p_json:
@@ -207,20 +231,20 @@ class FileRequestPlugin(object):
                 self.response({
                     "error": "Not signed message"
                 })
-                return False, "", msg_hash
+                return False, "", None, msg_hash
             elif isinstance(valid, str) and signature_address != valid:
                 self.connection.log("Message signature is invalid: %s not in [%r]" % (signature_address, valid))
                 self.connection.badAction(5)
                 self.response({
                     "error": "Message signature is invalid: %s not in [%r]" % (signature_address, valid)
                 })
-                return False, "", msg_hash
+                return False, "", None, msg_hash
             elif isinstance(valid, list) and signature_address not in valid:
                 self.connection.log("Message signature is invalid: %s not in %r" % (signature_address, valid))
                 self.connection.badAction(5)
                 self.response({
                     "error": "Message signature is invalid: %s not in %r" % (signature_address, valid)
                 })
-                return False, "", msg_hash
+                return False, "", None, msg_hash
 
-        return True, signature_address, msg_hash
+        return True, signature_address, cert, msg_hash

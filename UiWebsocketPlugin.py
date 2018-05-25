@@ -165,8 +165,8 @@ class UiWebsocketPlugin(object):
 
             if cert:
                 site_data = self.user.getSiteData(self.site.address, create=False)
-                cert_address = site_data["cert"]
-                cert = [cert["auth_type"], cert["auth_user_name"], cert_address, cert["cert_sign"]]
+                cert_issuer = site_data["cert"]
+                cert = [cert["auth_type"], cert["auth_user_name"], cert_issuer, cert["cert_sign"]]
 
         # Generate signature
         if privatekey:
