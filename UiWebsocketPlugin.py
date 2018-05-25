@@ -73,6 +73,7 @@ class UiWebsocketPlugin(object):
                 "hash": msg_hash,
                 "message": message,
                 "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
+                "cert": all_message["cert"],
                 "broadcast": True
             })
 
@@ -82,6 +83,7 @@ class UiWebsocketPlugin(object):
                 "hash": msg_hash,
                 "message": message,
                 "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
+                "cert": all_message["cert"],
                 "broadcast": True
             })
 
