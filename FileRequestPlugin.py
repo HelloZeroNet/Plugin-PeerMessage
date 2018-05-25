@@ -17,7 +17,7 @@ class FileRequestPlugin(object):
 
         raw = json.loads(params["raw"])
 
-        res, signature_address, msg_hash = self.peerCheckMessage(raw, params, ip)
+        res, signature_address, cert, msg_hash = self.peerCheckMessage(raw, params, ip)
         if not res:
             return
 
@@ -39,6 +39,7 @@ class FileRequestPlugin(object):
                 "hash": msg_hash,
                 "message": raw["message"],
                 "signed_by": signature_address,
+                "cert": cert,
                 "broadcast": True
             })
 
@@ -58,7 +59,9 @@ class FileRequestPlugin(object):
                 "ip": "%s:%s" % (self.connection.ip, self.connection.port),
                 "hash": msg_hash,
                 "message": raw["message"],
-                "signed_by": signature_address
+                "signed_by": signature_address,
+                "cert": cert,
+                "broadcast": True
             })
 
 
@@ -82,7 +85,7 @@ class FileRequestPlugin(object):
         raw = json.loads(params["raw"])
 
 
-        res, signature_address, msg_hash = self.peerCheckMessage(raw, params, ip)
+        res, signature_address, cert, msg_hash = self.peerCheckMessage(raw, params, ip)
         if not res:
             return
 
@@ -96,7 +99,8 @@ class FileRequestPlugin(object):
             site.p2p_to[raw["to"]].set({
                 "hash": msg_hash,
                 "message": raw["message"],
-                "signed_by": signature_address
+                "signed_by": signature_address,
+                "cert": cert
             })
         else:
             # Broadcast
@@ -111,6 +115,7 @@ class FileRequestPlugin(object):
                     "hash": msg_hash,
                     "message": raw["message"],
                     "signed_by": signature_address,
+                    "cert": cert,
                     "broadcast": False
                 })
 
