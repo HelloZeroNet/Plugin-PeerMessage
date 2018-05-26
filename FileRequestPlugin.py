@@ -127,6 +127,17 @@ class FileRequestPlugin(object):
                 if not result:
                     self.connection.badAction(10)
 
+            # Save to cache
+            if not websockets and raw["immediate"]:
+                site.p2p_unread.append({
+                    "ip": ip,
+                    "hash": msg_hash,
+                    "message": raw["message"],
+                    "signed_by": signature_address,
+                    "cert": cert,
+                    "broadcast": False
+                })
+
 
     def peerCheckMessage(self, raw, params, ip):
         # Calculate hash from nonce

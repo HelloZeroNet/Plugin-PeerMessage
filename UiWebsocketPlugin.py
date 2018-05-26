@@ -116,7 +116,7 @@ class UiWebsocketPlugin(object):
     # Send a message to IP
     def actionPeerSend(self, *args, **kwargs):
         gevent.spawn(self.handlePeerSend, *args, **kwargs)
-    def handlePeerSend(self, to_, ip, message, privatekey=None, to=None):
+    def handlePeerSend(self, to_, ip, message, privatekey=None, to=None, immediate=False):
         # Check message
         if not self.peerCheckMessage(to_, message):
             return
@@ -137,6 +137,7 @@ class UiWebsocketPlugin(object):
         # Generate hash
         all_message = {
             "message": message,
+            "immediate": immediate,
             "site": self.site.address
         }
         if to:
