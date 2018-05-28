@@ -4,6 +4,7 @@ import json
 import time
 import gevent
 import hashlib
+from p2putil import getWebsockets
 
 
 
@@ -27,7 +28,7 @@ class FileRequestPlugin(object):
 
 
         site = self.sites.get(raw["site"])
-        websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
+        websockets = getWebsockets(site)
         if websockets:
             # Wait for result (valid/invalid)
             site.p2p_result[msg_hash] = gevent.event.AsyncResult()
@@ -104,7 +105,7 @@ class FileRequestPlugin(object):
             })
         else:
             # Broadcast
-            websockets = [ws for ws in site.websockets if "peerReceive" in ws.channels]
+            websockets = getWebsockets(site)
             if websockets:
                 # Wait for result (valid/invalid)
                 site.p2p_result[msg_hash] = gevent.event.AsyncResult()

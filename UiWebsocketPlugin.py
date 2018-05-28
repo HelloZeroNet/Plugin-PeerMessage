@@ -5,6 +5,7 @@ import random
 import json
 import time
 import gevent
+from p2putil import getWebsockets
 
 
 
@@ -66,7 +67,7 @@ class UiWebsocketPlugin(object):
         # Send message to myself
         self.site.p2p_received.append(msg_hash)
 
-        websockets = [ws for ws in self.site.websockets if "peerReceive" in ws.channels]
+        websockets = getWebsockets(self.site)
         for ws in websockets:
             ws.cmd("peerReceive", {
                 "ip": "self",
