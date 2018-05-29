@@ -39,7 +39,7 @@ class UiWebsocketPlugin(object):
     # Broadcast message to other peers
     def actionPeerBroadcast(self, *args, **kwargs):
         gevent.spawn(self.handlePeerBroadcast, *args, **kwargs)
-    def handlePeerBroadcast(self, to, message, privatekey=None, peer_count=5, broadcast=True, immediate=False, timeout=60):
+    def handlePeerBroadcast(self, to, message, privatekey=None, peer_count=5, immediate=False, timeout=60):
         # Check message
         if not self.peerCheckMessage(to, message):
             return
@@ -48,7 +48,7 @@ class UiWebsocketPlugin(object):
         all_message = {
             "message": message,
             "peer_count": peer_count,
-            "broadcast": broadcast,
+            "broadcast": True, # backward compatibility
             "immediate": immediate,
             "site": self.site.address
         }
@@ -89,15 +89,10 @@ class UiWebsocketPlugin(object):
             })
 
 
-        if not broadcast:
-            # Makes sense to return result
-            res = gevent.joinall(jobs, timeout)
-            self.response(to, res)
-        else:
-            # Reply
-            self.response(to, {
-                "sent": True
-            })
+        # Reply
+        self.response(to, {
+            "sent": True
+        })
 
     def p2pBroadcast(self, peer, data):
         reply = peer.request("peerBroadcast", data)
