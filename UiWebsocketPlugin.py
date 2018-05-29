@@ -16,10 +16,10 @@ class UiWebsocketPlugin(object):
 
         # Automatically join peerReceive
         if self.site.storage.isFile("p2p.json"):
+            self.channels.append("peerReceive")
+
             p2p_json = self.site.storage.loadJson("p2p.json")
             if "filter" in p2p_json:
-                self.channels.append("peerReceive")
-
                 # Flush immediate messages
                 for message in self.site.p2p_unread:
                     self.cmd("peerReceive", message)
