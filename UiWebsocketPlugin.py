@@ -39,7 +39,7 @@ class UiWebsocketPlugin(object):
     # Broadcast message to other peers
     def actionPeerBroadcast(self, *args, **kwargs):
         gevent.spawn(self.handlePeerBroadcast, *args, **kwargs)
-    def handlePeerBroadcast(self, to, message, privatekey=None, peer_count=5, immediate=False, timeout=60):
+    def handlePeerBroadcast(self, to, message, privatekey=None, peer_count=5, immediate=False):
         # Check message
         if not self.peerCheckMessage(to, message):
             return
