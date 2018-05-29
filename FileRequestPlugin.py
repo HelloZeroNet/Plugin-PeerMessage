@@ -66,16 +66,14 @@ class FileRequestPlugin(object):
             })
 
 
-        # Now send to neighbour peers
-        if raw["broadcast"]:
-            # Get peer list
-            peers = site.getConnectedPeers()
-            if len(peers) < raw["peer_count"]:  # Add more, non-connected peers if necessary
-                peers += site.getRecentPeers(raw["peer_count"] - len(peers))
+        # Get peer list
+        peers = site.getConnectedPeers()
+        if len(peers) < raw["peer_count"]:  # Add more, non-connected peers if necessary
+            peers += site.getRecentPeers(raw["peer_count"] - len(peers))
 
-            # Send message to peers
-            for peer in peers:
-                gevent.spawn(peer.request, "peerBroadcast", params)
+        # Send message to neighbour peers
+        for peer in peers:
+            gevent.spawn(peer.request, "peerBroadcast", params)
 
 
     # Receive by-ip messages
