@@ -166,8 +166,14 @@ class UiWebsocketPlugin(object):
             if cert:
                 site_data = self.user.getSiteData(self.site.address, create=False)
                 cert_issuer = site_data["cert"]
-                cert = [cert["auth_type"], cert["auth_user_name"], cert_issuer, cert["cert_sign"]]
-                cert_text = "%s/%s@%s" % tuple(cert[:3])
+
+                p2p_json = self.site.storage.loadJson("p2p.json")
+                if cert_issuer in p2p_json.get("cert_signers", {}):
+                    cert = [cert["auth_type"], cert["auth_user_name"], cert_issuer, cert["cert_sign"]]
+                    cert_text = "%s/%s@%s" % tuple(cert[:3])
+                else:
+                    cert = None
+                    cert_text = ""
             else:
                 cert_text = ""
 
