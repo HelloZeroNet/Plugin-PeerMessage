@@ -27,5 +27,6 @@ def getWebsockets(site):
         class Callback(object):
             def cmd(self, _, data):
                 callback(**data)
+        websockets.append(Callback())
 
     return websockets

@@ -1,12 +1,12 @@
-def module(io):
-	_callbacks = []
+_callbacks = []
 
+def module(io):
 	class PeerMessage(object):
-		def onPeerReceive(callback):
-			if callback not in:
+		def onPeerReceive(self, callback):
+			if callback not in _callbacks:
 				_callbacks.append(callback)
 
-		def peerBroadcast(*args, **kwargs):
+		def peerBroadcast(self, *args, **kwargs):
 			class SimulatedUiWebsocket(object):
 				def __init__(self):
 					self.site = io["site"]
