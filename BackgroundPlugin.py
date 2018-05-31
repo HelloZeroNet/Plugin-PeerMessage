@@ -1,7 +1,6 @@
-import BackgroundPeerMessage
-
 try:
 	import BackgroundProcessing
-	BackgroundProcessing.addModule("PeerMessage", BackgroundPeerMessage)
+	from BackgroundPeerMessage import module
+	BackgroundProcessing.addModule("PeerMessage", module)
 except ImportError:
 	pass
