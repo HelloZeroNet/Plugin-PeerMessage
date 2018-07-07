@@ -1,1 +1,2 @@
 import P2PPlugin
+import BackgroundPlugin
