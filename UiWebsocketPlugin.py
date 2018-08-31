@@ -119,16 +119,17 @@ class UiWebsocketPlugin(object):
 
 
         # Get peer or connect to it if it isn't cached
-        peer = self.site.peers.get(ip)
-        if not peer:
-            mip, mport = ip.split(":")
-            peer = self.site.addPeer(mip, mport, source="peerSend")
-        if not peer:
-            # Couldn't connect to this IP
-            self.response(to_, {
-                "error": "Could not find peer %s" % ip
-            })
-            return
+        if ip != "self":
+            peer = self.site.peers.get(ip)
+            if not peer:
+                mip, mport = ip.split(":")
+                peer = self.site.addPeer(mip, mport, source="peerSend")
+            if not peer:
+                # Couldn't connect to this IP
+                self.response(to_, {
+                    "error": "Could not find peer %s" % ip
+                })
+                return
 
         # Generate hash
         all_message = {
@@ -143,11 +144,46 @@ class UiWebsocketPlugin(object):
 
         # Send message
         self.site.p2p_to[msg_hash] = gevent.event.AsyncResult()
-        peer.request("peerSend", all_message)
+        if ip == "self":
+            self.handlePeerSendSelf(all_message, to, msg_hash, message, cert, immediate)
+        else:
+            peer.request("peerSend", all_message)
 
         # Get reply
         reply = self.site.p2p_to[msg_hash].get()
         self.response(to_, reply)
+
+
+    def handlePeerSendSelf(self, all_message, to, msg_hash, message, cert, immediate):
+        signature_address = all_message["signature"].split("|")[0]
+
+        if to is not None:
+            # This is a reply to peerSend
+            self.site.p2p_to[to].set({
+                "hash": msg_hash,
+                "message": message,
+                "signed_by": signature_address,
+                "cert": cert
+            })
+        else:
+            # Broadcast
+            websockets = getWebsockets(self.site)
+
+            data = {
+                "ip": "self",
+                "hash": msg_hash,
+                "message": message,
+                "signed_by": signature_address,
+                "cert": cert,
+                "broadcast": False
+            }
+
+            for ws in websockets:
+                ws.cmd("peerReceive", data)
+
+            # Save to cache
+            if not websockets and immediate:
+                self.site.p2p_unread.append(data)
 
 
 
