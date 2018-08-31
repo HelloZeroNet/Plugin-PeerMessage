@@ -21,12 +21,4 @@ def getWebsockets(site):
 
     # Filter out sites not supporting P2P
     # (e.g. ZeroHello, which joins all channels automatically)
-    websockets = [ws for ws in websockets if "peerReceive" in ws.channels]
-
-    for callback in BackgroundPeerMessage._callbacks:
-        class Callback(object):
-            def cmd(self, _, data):
-                callback(**data)
-        websockets.append(Callback())
-
-    return websockets
+    return [ws for ws in websockets if "peerReceive" in ws.channels]

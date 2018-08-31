@@ -1,53 +1,26 @@
-_callbacks = []
-
 def module(io):
+	io["scope0"].import_(names=[("ZeroFrame", "_")], from_=None, level=0)
+	zeroframe = io["scope0"]["_"]
+
 	class PeerMessage(object):
+		def join(self):
+			zeroframe.cmd("channelJoin", "peerReceive")
+
 		def onPeerReceive(self, callback):
-			if callback not in _callbacks:
-				_callbacks.append(callback)
+			def func(message):
+				callback(**message)
+			zeroframe.on("peerReceive", func)
 
 		def peerBroadcast(self, *args, **kwargs):
-			class SimulatedUiWebsocket(object):
-				def __init__(self):
-					self.site = io["site"]
-
-			ws = SimulatedUiWebsocket()
-
-			import UiWebsocketPlugin
-			f = UiWebsocketPlugin.actionPeerBroadcast.__get__(ws, UiWebsocketPlugin)
-			f(*args, **kwargs)
+			return zeroframe.cmd("peerBroadcast", *args, **kwargs)
 
 		def peerSend(self, *args, **kwargs):
-			class SimulatedUiWebsocket(object):
-				def __init__(self):
-					self.site = io["site"]
-
-			ws = SimulatedUiWebsocket()
-
-			import UiWebsocketPlugin
-			f = UiWebsocketPlugin.peerSend.__get__(ws, UiWebsocketPlugin)
-			f(*args, **kwargs)
+			return zeroframe.cmd("peerSend", *args, **kwargs)
 
 		def peerInvalid(self, *args, **kwargs):
-			class SimulatedUiWebsocket(object):
-				def __init__(self):
-					self.site = io["site"]
-
-			ws = SimulatedUiWebsocket()
-
-			import UiWebsocketPlugin
-			f = UiWebsocketPlugin.peerInvalid.__get__(ws, UiWebsocketPlugin)
-			f(*args, **kwargs)
+			return zeroframe.cmd("peerInvalid", *args, **kwargs)
 
 		def peerValid(self, *args, **kwargs):
-			class SimulatedUiWebsocket(object):
-				def __init__(self):
-					self.site = io["site"]
-
-			ws = SimulatedUiWebsocket()
-
-			import UiWebsocketPlugin
-			f = UiWebsocketPlugin.peerValid.__get__(ws, UiWebsocketPlugin)
-			f(*args, **kwargs)
+			return zeroframe.cmd("peerValid", *args, **kwargs)
 
 	return PeerMessage()
