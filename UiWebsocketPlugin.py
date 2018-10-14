@@ -122,7 +122,7 @@ class UiWebsocketPlugin(object):
         if ip != "self":
             peer = self.site.peers.get(ip)
             if not peer:
-                mip, mport = ip.split(":")
+                mip, mport = ip.rsplit(":", 1)
                 peer = self.site.addPeer(mip, mport, source="peerSend")
             if not peer:
                 # Couldn't connect to this IP
