@@ -4,7 +4,7 @@ try:
 except ImportError:
     has_merger_plugin = False
 
-import BackgroundPeerMessage
+from . import BackgroundPeerMessage
 
 
 def getWebsockets(site):

@@ -4,7 +4,7 @@ import json
 import time
 import gevent
 import hashlib
-from p2putil import getWebsockets
+from .p2putil import getWebsockets
 
 
 

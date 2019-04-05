@@ -1,3 +1,3 @@
-import SitePlugin
-import UiWebsocketPlugin
-import FileRequestPlugin
+from . import SitePlugin
+from . import UiWebsocketPlugin
+from . import FileRequestPlugin

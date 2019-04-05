@@ -5,7 +5,7 @@ import random
 import json
 import time
 import gevent
-from p2putil import getWebsockets
+from .p2putil import getWebsockets
 
 
 
