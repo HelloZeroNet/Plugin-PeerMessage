@@ -234,7 +234,7 @@ class UiWebsocketPlugin(object):
     def peerGenerateMessage(self, all_message, privatekey=None):
         all_message = json.dumps(all_message)
         nonce = str(random.randint(0, 1000000000))
-        msg_hash = hashlib.sha256("%s,%s" % (nonce, all_message)).hexdigest()
+        msg_hash = hashlib.sha256(("%s,%s" % (nonce, all_message)).encode("ascii")).hexdigest()
         signature, cert, cert_text = self.p2pGetSignature(msg_hash, all_message, privatekey)
         return {
             "raw": all_message,
