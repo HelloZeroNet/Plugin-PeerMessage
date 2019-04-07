@@ -214,7 +214,10 @@ class FileRequestPlugin(object):
             # Now check auth providers
             if params.get("cert"):
                 # Read all info
-                cert_auth_type, cert_auth_user_name, cert_issuer, cert_sign = map(lambda b: b.decode("ascii"), params["cert"])
+                cert_auth_type, cert_auth_user_name, cert_issuer, cert_sign = map(
+                    lambda b: b.decode("ascii") if isinstance(b, bytes) else b,
+                    params["cert"]
+                )
                 # This is what certificate issuer signs
                 cert_subject = "%s#%s/%s" % (signature_address, cert_auth_type, cert_auth_user_name)
                 # Now get cert issuer address
