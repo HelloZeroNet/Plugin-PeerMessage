@@ -1,6 +1,6 @@
 def module(io):
 	scope0 = io["scope0"][0]
-	scope0.import_(names=[("ZeroFrame", "_")], from_=None, level=0)
+	scope0.import_(names=[("ZeroFrame", "_")], from_=None, level=None)
 	zeroframe = scope0["_"]
 
 	class PeerMessage(object):
