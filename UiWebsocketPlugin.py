@@ -188,13 +188,17 @@ class UiWebsocketPlugin(object):
 
 
     def p2pGetSignature(self, hash, data, privatekey):
+        if privatekey is None:
+            return "", None, None
+
+        cert = None
+        cert_text = ""
+
         # Get private key
         if privatekey == "stored":
             # Using site privatekey
             privatekey = self.user.getSiteData(self.site.address).get("privatekey")
-            cert = None
-            cert_text = ""
-        elif not privatekey and privatekey is not None:
+        elif privatekey is False:
             # Using user privatekey
             privatekey = self.user.getAuthPrivatekey(self.site.address)
             cert = self.user.getCert(self.site.address)
@@ -207,19 +211,11 @@ class UiWebsocketPlugin(object):
                 if cert_issuer in p2p_json.get("cert_signers", {}):
                     cert = [cert["auth_type"], cert["auth_user_name"], cert_issuer, cert["cert_sign"]]
                     cert_text = "%s/%s@%s" % tuple(cert[:3])
-                else:
-                    cert = None
-                    cert_text = ""
-            else:
-                cert_text = ""
 
         # Generate signature
-        if privatekey:
-            from Crypt import CryptBitcoin
-            address = CryptBitcoin.privatekeyToAddress(privatekey)
-            return "%s|%s" % (address, CryptBitcoin.sign("%s|%s|%s" % (address, hash, data), privatekey)), cert, cert_text
-        else:
-            return "", None, None
+        from Crypt import CryptBitcoin
+        address = CryptBitcoin.privatekeyToAddress(privatekey)
+        return "%s|%s" % (address, CryptBitcoin.sign("%s|%s|%s" % (address, hash, data), privatekey)), cert, cert_text
 
 
     def actionPeerInvalid(self, to, hash):
