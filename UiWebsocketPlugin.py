@@ -75,6 +75,7 @@ class UiWebsocketPlugin(object):
                 "message": message,
                 "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
                 "cert": cert,
+                "site": self.site.address,
                 "broadcast": True
             })
 
@@ -85,6 +86,7 @@ class UiWebsocketPlugin(object):
                 "message": message,
                 "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
                 "cert": cert,
+                "site": self.site.address,
                 "broadcast": True
             })
 
@@ -175,6 +177,7 @@ class UiWebsocketPlugin(object):
                 "message": message,
                 "signed_by": signature_address,
                 "cert": cert,
+                "site": self.site.address,
                 "broadcast": False
             }
 

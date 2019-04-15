@@ -41,6 +41,7 @@ class FileRequestPlugin(object):
                 "message": raw["message"],
                 "signed_by": signature_address,
                 "cert": cert,
+                "site": raw["site"],
                 "broadcast": True
             })
 
@@ -62,6 +63,7 @@ class FileRequestPlugin(object):
                 "message": raw["message"],
                 "signed_by": signature_address,
                 "cert": cert,
+                "site": raw["site"],
                 "broadcast": True
             })
 
@@ -115,6 +117,7 @@ class FileRequestPlugin(object):
                     "message": raw["message"],
                     "signed_by": signature_address,
                     "cert": cert,
+                    "site": raw["site"],
                     "broadcast": False
                 })
 
@@ -134,6 +137,7 @@ class FileRequestPlugin(object):
                     "message": raw["message"],
                     "signed_by": signature_address,
                     "cert": cert,
+                    "site": raw["site"],
                     "broadcast": False
                 })
 
