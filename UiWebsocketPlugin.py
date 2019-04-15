@@ -14,9 +14,10 @@ class UiWebsocketPlugin(object):
     def __init__(self, *args, **kwargs):
         res = super(UiWebsocketPlugin, self).__init__(*args, **kwargs)
 
-        # Automatically join peerReceive
+        # Automatically join peerReceive and peerSend
         if self.site.storage.isFile("p2p.json"):
             self.channels.append("peerReceive")
+            self.channels.append("peerSend")
 
             p2p_json = self.site.storage.loadJson("p2p.json")
             if "filter" in p2p_json:
@@ -96,6 +97,18 @@ class UiWebsocketPlugin(object):
             "sent": True
         })
 
+        # Also send the message to myself
+        data = {
+            "hash": msg_hash,
+            "message": message,
+            "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
+            "cert": cert,
+            "site": self.site.address,
+            "broadcast": True
+        }
+        for ws in getWebsockets(self.site):
+            ws.cmd("peerSend", data)
+
     def p2pBroadcast(self, peer, data):
         reply = peer.request("peerBroadcast", data)
         if reply is None:
@@ -155,9 +168,22 @@ class UiWebsocketPlugin(object):
         reply = self.site.p2p_to[msg_hash].get()
         self.response(to_, reply)
 
+        # Also send the message to myself
+        data = {
+            "ip": ip,
+            "hash": msg_hash,
+            "message": message,
+            "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
+            "cert": cert,
+            "site": self.site.address,
+            "broadcast": False
+        }
+        for ws in getWebsockets(self.site):
+            ws.cmd("peerSend", data)
+
 
     def handlePeerSendSelf(self, all_message, to, msg_hash, message, cert, immediate):
-        signature_address = all_message["signature"].split("|")[0]
+        signature_address = all_message["signature"].split("|")[0] if all_message["signature"] else ""
 
         if to is not None:
             # This is a reply to peerSend
