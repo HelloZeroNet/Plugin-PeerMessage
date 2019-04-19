@@ -14,9 +14,10 @@ class UiWebsocketPlugin(object):
     def __init__(self, *args, **kwargs):
         res = super(UiWebsocketPlugin, self).__init__(*args, **kwargs)
 
-        # Automatically join peerReceive
+        # Automatically join peerReceive and peerSend
         if self.site.storage.isFile("p2p.json"):
             self.channels.append("peerReceive")
+            self.channels.append("peerSend")
 
             p2p_json = self.site.storage.loadJson("p2p.json")
             if "filter" in p2p_json:
@@ -75,6 +76,7 @@ class UiWebsocketPlugin(object):
                 "message": message,
                 "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
                 "cert": cert,
+                "site": self.site.address,
                 "broadcast": True
             })
 
@@ -85,6 +87,7 @@ class UiWebsocketPlugin(object):
                 "message": message,
                 "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
                 "cert": cert,
+                "site": self.site.address,
                 "broadcast": True
             })
 
@@ -93,6 +96,18 @@ class UiWebsocketPlugin(object):
         self.response(to, {
             "sent": True
         })
+
+        # Also send the message to myself
+        data = {
+            "hash": msg_hash,
+            "message": message,
+            "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
+            "cert": cert,
+            "site": self.site.address,
+            "broadcast": True
+        }
+        for ws in getWebsockets(self.site):
+            ws.cmd("peerSend", data)
 
     def p2pBroadcast(self, peer, data):
         reply = peer.request("peerBroadcast", data)
@@ -153,9 +168,22 @@ class UiWebsocketPlugin(object):
         reply = self.site.p2p_to[msg_hash].get()
         self.response(to_, reply)
 
+        # Also send the message to myself
+        data = {
+            "ip": ip,
+            "hash": msg_hash,
+            "message": message,
+            "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
+            "cert": cert,
+            "site": self.site.address,
+            "broadcast": False
+        }
+        for ws in getWebsockets(self.site):
+            ws.cmd("peerSend", data)
+
 
     def handlePeerSendSelf(self, all_message, to, msg_hash, message, cert, immediate):
-        signature_address = all_message["signature"].split("|")[0]
+        signature_address = all_message["signature"].split("|")[0] if all_message["signature"] else ""
 
         if to is not None:
             # This is a reply to peerSend
@@ -175,6 +203,7 @@ class UiWebsocketPlugin(object):
                 "message": message,
                 "signed_by": signature_address,
                 "cert": cert,
+                "site": self.site.address,
                 "broadcast": False
             }
 
@@ -188,13 +217,17 @@ class UiWebsocketPlugin(object):
 
 
     def p2pGetSignature(self, hash, data, privatekey):
+        if privatekey is None:
+            return "", None, None
+
+        cert = None
+        cert_text = ""
+
         # Get private key
         if privatekey == "stored":
             # Using site privatekey
             privatekey = self.user.getSiteData(self.site.address).get("privatekey")
-            cert = None
-            cert_text = ""
-        elif not privatekey and privatekey is not None:
+        elif privatekey is False:
             # Using user privatekey
             privatekey = self.user.getAuthPrivatekey(self.site.address)
             cert = self.user.getCert(self.site.address)
@@ -209,17 +242,11 @@ class UiWebsocketPlugin(object):
                     cert_text = "%s/%s@%s" % tuple(cert[:3])
                 else:
                     cert = None
-                    cert_text = ""
-            else:
-                cert_text = ""
 
         # Generate signature
-        if privatekey:
-            from Crypt import CryptBitcoin
-            address = CryptBitcoin.privatekeyToAddress(privatekey)
-            return "%s|%s" % (address, CryptBitcoin.sign("%s|%s|%s" % (address, hash, data), privatekey)), cert, cert_text
-        else:
-            return "", None, None
+        from Crypt import CryptBitcoin
+        address = CryptBitcoin.privatekeyToAddress(privatekey)
+        return "%s|%s" % (address, CryptBitcoin.sign("%s|%s|%s" % (address, hash, data), privatekey)), cert, cert_text
 
 
     def actionPeerInvalid(self, to, hash):
