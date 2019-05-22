@@ -6,6 +6,10 @@ import gevent
 import hashlib
 from .p2putil import getWebsockets
 
+try:
+    from Crypt import Cryptography
+except ImportError:
+    from Crypt import CryptBitcoin as Cryptography
 
 
 @PluginManager.registerTo("FileRequest")
@@ -206,8 +210,7 @@ class FileRequestPlugin(object):
         if params["signature"]:
             signature_address, signature = params["signature"].split("|")
             what = "%s|%s|%s" % (signature_address, msg_hash, params["raw"])
-            from Crypt import CryptBitcoin
-            if not CryptBitcoin.verify(what, signature_address, signature):
+            if not Cryptography.verify(what, signature_address, signature):
                 self.connection.log("Invalid signature")
                 self.connection.badAction(7)
                 self.response({
@@ -228,7 +231,7 @@ class FileRequestPlugin(object):
                 cert_signers = p2p_json.get("cert_signers", {})
                 cert_addresses = cert_signers.get(cert_issuer, [])
                 # And verify it
-                if not CryptBitcoin.verify(cert_subject, cert_addresses, cert_sign):
+                if not Cryptography.verify(cert_subject, cert_addresses, cert_sign):
                     self.connection.log("Invalid signature certificate")
                     self.connection.badAction(7)
                     self.response({

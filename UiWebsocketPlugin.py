@@ -7,6 +7,10 @@ import time
 import gevent
 from .p2putil import getWebsockets
 
+try:
+    from Crypt import Cryptography
+except ImportError:
+    from Crypt import CryptBitcoin as Cryptography
 
 
 @PluginManager.registerTo("UiWebsocket")
@@ -244,9 +248,8 @@ class UiWebsocketPlugin(object):
                     cert = None
 
         # Generate signature
-        from Crypt import CryptBitcoin
-        address = CryptBitcoin.privatekeyToAddress(privatekey)
-        return "%s|%s" % (address, CryptBitcoin.sign("%s|%s|%s" % (address, hash, data), privatekey)), cert, cert_text
+        address = Cryptography.privatekeyToAddress(privatekey)
+        return "%s|%s" % (address, Cryptography.sign("%s|%s|%s" % (address, hash, data), privatekey)), cert, cert_text
 
 
     def actionPeerInvalid(self, to, hash):
