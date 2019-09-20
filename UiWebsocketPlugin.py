@@ -65,9 +65,8 @@ class UiWebsocketPlugin(object):
             peers += self.site.getRecentPeers(peer_count - len(peers))
 
         # Send message to peers
-        jobs = []
         for peer in peers:
-            jobs.append(gevent.spawn(self.p2pBroadcast, peer, all_message))
+            gevent.spawn(self.p2pBroadcast, peer, all_message)
 
         # Send message to myself
         self.site.p2p_received.append(msg_hash)
