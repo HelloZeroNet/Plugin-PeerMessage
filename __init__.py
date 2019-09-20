@@ -1,2 +1,4 @@
-from . import P2PPlugin
+from . import SitePlugin
+from . import UiWebsocketPlugin
+from . import FileRequestPlugin
 from . import BackgroundPlugin
