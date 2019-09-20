@@ -20,6 +20,9 @@ class FileRequestPlugin(object):
     def handlePeerBroadcast(self, params):
         ip = "%s:%s" % (self.connection.ip, self.connection.port)
 
+        if "trace" in params:
+            params["trace"].append(ip)
+
         raw = json.loads(params["raw"])
 
         res, signature_address, cert, msg_hash = self.peerCheckMessage(raw, params, ip)
@@ -46,7 +49,8 @@ class FileRequestPlugin(object):
                 "signed_by": signature_address,
                 "cert": cert,
                 "site": raw["site"],
-                "broadcast": True
+                "broadcast": True,
+                "trace": params.get("trace")
             })
 
 
@@ -68,7 +72,8 @@ class FileRequestPlugin(object):
                 "signed_by": signature_address,
                 "cert": cert,
                 "site": raw["site"],
-                "broadcast": True
+                "broadcast": True,
+                "trace": params.get("trace")
             })
 
 
