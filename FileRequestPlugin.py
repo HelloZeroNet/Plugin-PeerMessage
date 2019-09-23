@@ -1,10 +1,11 @@
 from Plugin import PluginManager
+from Config import config
 from util import SafeRe
 import json
 import time
 import gevent
 import hashlib
-from .p2putil import getWebsockets
+from .p2putil import getWebsockets, traceroute
 
 try:
     from Crypt import Crypt
@@ -21,6 +22,13 @@ class FileRequestPlugin(object):
         ip = "%s:%s" % (self.connection.ip, self.connection.port)
 
         if "trace" in params:
+            if self.connection.ip_type == "ipv4" and config.tor != "always":
+                tr = traceroute(self.connection.ip)
+                if tr is not None:
+                    for tip in tr[::-1]:
+                        if f"outgoing:{tip}" in params["trace"]:
+                            break
+                        params["trace"].append(f"incoming:{tip}")
             params["trace"].append(ip)
 
         raw = json.loads(params["raw"])
@@ -50,7 +58,8 @@ class FileRequestPlugin(object):
                 "cert": cert,
                 "site": raw["site"],
                 "broadcast": True,
-                "trace": params.get("trace")
+                "trace": params.get("trace"),
+                "timestamp": raw.get("timestamp")
             })
 
 
@@ -73,7 +82,8 @@ class FileRequestPlugin(object):
                 "cert": cert,
                 "site": raw["site"],
                 "broadcast": True,
-                "trace": params.get("trace")
+                "trace": params.get("trace"),
+                "timestamp": raw.get("timestamp")
             })
 
 
@@ -84,7 +94,12 @@ class FileRequestPlugin(object):
 
         # Send message to neighbour peers
         for peer in peers:
-            gevent.spawn(peer.request, "peerBroadcast", params)
+            peer_params = params.copy()
+            if peer.connection.ip_type == "ipv4" and config.tor != "always":
+                tr = traceroute(peer.connection.ip)
+                if tr is not None:
+                    peer_params["trace"] += [f"outgoing:{tip}" for tip in tr]
+            gevent.spawn(peer.request, "peerBroadcast", peer_params)
 
 
     # Receive by-ip messages
@@ -110,7 +125,8 @@ class FileRequestPlugin(object):
                 "hash": msg_hash,
                 "message": raw["message"],
                 "signed_by": signature_address,
-                "cert": cert
+                "cert": cert,
+                "timestamp": raw.get("timestamp")
             })
         else:
             # Broadcast
@@ -127,7 +143,8 @@ class FileRequestPlugin(object):
                     "signed_by": signature_address,
                     "cert": cert,
                     "site": raw["site"],
-                    "broadcast": False
+                    "broadcast": False,
+                    "timestamp": raw.get("timestamp")
                 })
 
             # Maybe active filter will reply?
@@ -147,7 +164,8 @@ class FileRequestPlugin(object):
                     "signed_by": signature_address,
                     "cert": cert,
                     "site": raw["site"],
-                    "broadcast": False
+                    "broadcast": False,
+                    "timestamp": raw.get("timestamp")
                 })
 
 

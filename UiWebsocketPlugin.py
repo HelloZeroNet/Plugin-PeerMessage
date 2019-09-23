@@ -1,11 +1,12 @@
 from Plugin import PluginManager
 from util import SafeRe
+from Config import config
 import hashlib
 import random
 import json
 import time
 import gevent
-from .p2putil import getWebsockets
+from .p2putil import getWebsockets, traceroute
 
 try:
     from Crypt import Crypt
@@ -44,7 +45,7 @@ class UiWebsocketPlugin(object):
     # Broadcast message to other peers
     def actionPeerBroadcast(self, *args, **kwargs):
         gevent.spawn(self.handlePeerBroadcast, *args, **kwargs)
-    def handlePeerBroadcast(self, to, message, privatekey=None, peer_count=5, immediate=False, trace=True):
+    def handlePeerBroadcast(self, to, message, privatekey=None, peer_count=5, immediate=False, trace=True, timestamp=False):
         # Check message
         if not self.peerCheckMessage(to, message):
             return
@@ -57,6 +58,9 @@ class UiWebsocketPlugin(object):
             "immediate": immediate,
             "site": self.site.address
         }
+        if timestamp:
+            import main
+            all_message["timestamp"] = time.time() + main.file_server.timecorrection
 
         all_message, msg_hash, cert = self.peerGenerateMessage(all_message, privatekey)
 
@@ -80,7 +84,8 @@ class UiWebsocketPlugin(object):
                 "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
                 "cert": cert,
                 "site": self.site.address,
-                "broadcast": True
+                "broadcast": True,
+                "timestamp": all_message.get("timestamp")
             })
 
         if not websockets and immediate:
@@ -91,7 +96,8 @@ class UiWebsocketPlugin(object):
                 "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
                 "cert": cert,
                 "site": self.site.address,
-                "broadcast": True
+                "broadcast": True,
+                "timestamp": all_message.get("timestamp")
             })
 
 
@@ -107,7 +113,8 @@ class UiWebsocketPlugin(object):
             "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
             "cert": cert,
             "site": self.site.address,
-            "broadcast": True
+            "broadcast": True,
+            "timestamp": all_message.get("timestamp")
         }
         for ws in getWebsockets(self.site):
             ws.cmd("peerSend", data)
@@ -116,6 +123,11 @@ class UiWebsocketPlugin(object):
         data = data.copy()
         if trace:
             data["trace"] = []
+            if peer.connection.ip_type == "ipv4" and config.tor != "always":
+                tr = traceroute(peer.connection.ip)
+                if tr is not None:
+                    params["trace"] += [f"outgoing:{tip}" for tip in tr]
+
         reply = peer.request("peerBroadcast", data)
         if reply is None:
             return {
@@ -133,7 +145,7 @@ class UiWebsocketPlugin(object):
     # Send a message to IP
     def actionPeerSend(self, *args, **kwargs):
         gevent.spawn(self.handlePeerSend, *args, **kwargs)
-    def handlePeerSend(self, to_, ip, message, privatekey=None, to=None, immediate=False):
+    def handlePeerSend(self, to_, ip, message, privatekey=None, to=None, immediate=False, timestamp=False):
         # Check message
         if not self.peerCheckMessage(to_, message):
             return
@@ -160,6 +172,9 @@ class UiWebsocketPlugin(object):
         }
         if to:
             all_message["to"] = to
+        if timestamp:
+            import main
+            all_message["timestamp"] = time.time() + main.file_server.timecorrection
 
         all_message, msg_hash, cert = self.peerGenerateMessage(all_message, privatekey)
 
@@ -182,7 +197,8 @@ class UiWebsocketPlugin(object):
             "signed_by": all_message["signature"].split("|")[0] if all_message["signature"] else "",
             "cert": cert,
             "site": self.site.address,
-            "broadcast": False
+            "broadcast": False,
+            "timestamp": all_message.get("timestamp")
         }
         for ws in getWebsockets(self.site):
             ws.cmd("peerSend", data)
@@ -197,7 +213,8 @@ class UiWebsocketPlugin(object):
                 "hash": msg_hash,
                 "message": message,
                 "signed_by": signature_address,
-                "cert": cert
+                "cert": cert,
+                "timestamp": all_message.get("timestamp")
             })
         else:
             # Broadcast
@@ -210,7 +227,8 @@ class UiWebsocketPlugin(object):
                 "signed_by": signature_address,
                 "cert": cert,
                 "site": self.site.address,
-                "broadcast": False
+                "broadcast": False,
+                "timestamp": all_message.get("timestamp")
             }
 
             for ws in websockets:
