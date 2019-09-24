@@ -5,7 +5,7 @@ import json
 import time
 import gevent
 import hashlib
-from .p2putil import getWebsockets, traceroute
+from .p2putil import getWebsockets
 
 try:
     from Crypt import Crypt
@@ -22,13 +22,6 @@ class FileRequestPlugin(object):
         ip = "%s:%s" % (self.connection.ip, self.connection.port)
 
         if "trace" in params:
-            if self.connection.ip_type == "ipv4" and config.tor != "always":
-                tr = traceroute(self.connection.ip)
-                if tr is not None:
-                    for tip in tr[::-1]:
-                        if f"outgoing:{tip}" in params["trace"]:
-                            break
-                        params["trace"].append(f"incoming:{tip}")
             params["trace"].append(ip)
 
         raw = json.loads(params["raw"])
@@ -94,12 +87,7 @@ class FileRequestPlugin(object):
 
         # Send message to neighbour peers
         for peer in peers:
-            peer_params = params.copy()
-            if peer.connection.ip_type == "ipv4" and config.tor != "always":
-                tr = traceroute(peer.connection.ip)
-                if tr is not None:
-                    peer_params["trace"] += [f"outgoing:{tip}" for tip in tr]
-            gevent.spawn(peer.request, "peerBroadcast", peer_params)
+            gevent.spawn(peer.request, "peerBroadcast", params)
 
 
     # Receive by-ip messages

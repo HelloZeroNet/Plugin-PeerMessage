@@ -6,7 +6,7 @@ import random
 import json
 import time
 import gevent
-from .p2putil import getWebsockets, traceroute
+from .p2putil import getWebsockets
 
 try:
     from Crypt import Crypt
@@ -123,10 +123,6 @@ class UiWebsocketPlugin(object):
         data = data.copy()
         if trace:
             data["trace"] = []
-            if peer.connection.ip_type == "ipv4" and config.tor != "always":
-                tr = traceroute(peer.connection.ip)
-                if tr is not None:
-                    params["trace"] += [f"outgoing:{tip}" for tip in tr]
 
         reply = peer.request("peerBroadcast", data)
         if reply is None:
