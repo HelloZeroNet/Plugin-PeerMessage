@@ -17,7 +17,7 @@ except ImportError:
 @PluginManager.registerTo("UiWebsocket")
 class UiWebsocketPlugin(object):
     def __init__(self, *args, **kwargs):
-        res = super(UiWebsocketPlugin, self).__init__(*args, **kwargs)
+        super(UiWebsocketPlugin, self).__init__(*args, **kwargs)
 
         # Automatically join peerReceive and peerSend
         if self.site.storage.isFile("p2p.json"):
@@ -30,8 +30,6 @@ class UiWebsocketPlugin(object):
                 for message in self.site.p2p_unread:
                     self.cmd("peerReceive", message)
                 self.site.p2p_unread = []
-
-        return res
 
 
     # Allow to broadcast to any site
