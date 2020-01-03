@@ -1,17 +1,13 @@
 from Plugin import PluginManager
 from util import SafeRe
 from Config import config
+from Crypt import CryptBitcoin as Crypt
 import hashlib
 import random
 import json
 import time
 import gevent
 from .p2putil import getWebsockets
-
-try:
-    from Crypt import Crypt
-except ImportError:
-    from Crypt import CryptBitcoin as Crypt
 
 
 @PluginManager.registerTo("UiWebsocket")
